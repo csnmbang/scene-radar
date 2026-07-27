@@ -1,0 +1,658 @@
+[
+ {
+  "id": "12494690",
+  "listingDate": "2026-07-29T00:00:00.000",
+  "event": {
+   "id": "2494690",
+   "title": "Yinn, Zezo & ME KO",
+   "date": "2026-07-29T00:00:00.000",
+   "cost": "$",
+   "isTicketed": false,
+   "venue": {
+    "id": "80115",
+    "name": "Do Not Sit On The Furniture"
+   },
+   "artists": [
+    {
+     "id": "46485",
+     "name": "Meko"
+    }
+   ],
+   "genres": [
+    {
+     "id": "6",
+     "name": "House"
+    },
+    {
+     "id": "20",
+     "name": "Deep House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12495035",
+  "listingDate": "2026-07-30T00:00:00.000",
+  "event": {
+   "id": "2495035",
+   "title": "ARCA: XXXXX OFFICIAL LISTENING PARTY MIAMI with Hyperperreo",
+   "date": "2026-07-30T00:00:00.000",
+   "cost": "20",
+   "isTicketed": false,
+   "venue": {
+    "id": "198804",
+    "name": "Supernatural Haus"
+   },
+   "artists": [
+    {
+     "id": "166022",
+     "name": "DJ SABI"
+    },
+    {
+     "id": "164473",
+     "name": "Racci"
+    },
+    {
+     "id": "118609",
+     "name": "p1no"
+    },
+    {
+     "id": "166025",
+     "name": "Trippie Hippie (US)"
+    }
+   ],
+   "genres": [
+    {
+     "id": "25",
+     "name": "Experimental"
+    },
+    {
+     "id": "68",
+     "name": "Neo Perreo"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12469298",
+  "listingDate": "2026-07-30T00:00:00.000",
+  "event": {
+   "id": "2469298",
+   "title": "Secret Thursdays",
+   "date": "2026-07-30T00:00:00.000",
+   "cost": "$",
+   "isTicketed": false,
+   "venue": {
+    "id": "80115",
+    "name": "Do Not Sit On The Furniture"
+   },
+   "artists": [
+    {
+     "id": "95578",
+     "name": "YeshaYahu"
+    },
+    {
+     "id": "183442",
+     "name": "Jessy Nimni"
+    }
+   ],
+   "genres": [
+    {
+     "id": "6",
+     "name": "House"
+    },
+    {
+     "id": "20",
+     "name": "Deep House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12471075",
+  "listingDate": "2026-07-30T00:00:00.000",
+  "event": {
+   "id": "2471075",
+   "title": "Club Rats: VLTRA",
+   "date": "2026-07-30T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "214717",
+    "name": "Jolene Downtown Miami"
+   },
+   "artists": [
+    {
+     "id": "119471",
+     "name": "VLTRA (IT)"
+    },
+    {
+     "id": "181090",
+     "name": "Nat Siriani"
+    }
+   ],
+   "genres": [
+    {
+     "id": "15",
+     "name": "Tech House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12483723",
+  "listingDate": "2026-07-30T00:00:00.000",
+  "event": {
+   "id": "2483723",
+   "title": "Bodeguita",
+   "date": "2026-07-30T00:00:00.000",
+   "cost": "0",
+   "isTicketed": false,
+   "venue": {
+    "id": "242909",
+    "name": "Bodega Taqueria Y Tequila"
+   },
+   "artists": [
+    {
+     "id": "7356",
+     "name": "Lazaro Casanova"
+    },
+    {
+     "id": "122525",
+     "name": "Nicole Fiallo"
+    },
+    {
+     "id": "181174",
+     "name": "Mr. Pauer"
+    }
+   ],
+   "genres": [
+    {
+     "id": "15",
+     "name": "Tech House"
+    },
+    {
+     "id": "72",
+     "name": "Afro House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12489143",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2489143",
+   "title": "Dustin Zahn",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "",
+   "isTicketed": true,
+   "venue": {
+    "id": "189088",
+    "name": "Domicile"
+   },
+   "artists": [
+    {
+     "id": "1869",
+     "name": "Dustin Zahn"
+    },
+    {
+     "id": "182949",
+     "name": "Leo Sosa"
+    },
+    {
+     "id": "94241",
+     "name": "Radar"
+    },
+    {
+     "id": "153093",
+     "name": "Mila Gama"
+    },
+    {
+     "id": "160379",
+     "name": "Shir Miya"
+    }
+   ],
+   "genres": [
+    {
+     "id": "5",
+     "name": "Techno"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12489887",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2489887",
+   "title": "Trap & Bullshit Rave",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "193257",
+    "name": "The Boombox"
+   },
+   "artists": [],
+   "genres": []
+  }
+ },
+ {
+  "id": "12489938",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2489938",
+   "title": "First Contact by House of Huemans & Cheddy Records",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "$20+",
+   "isTicketed": true,
+   "venue": {
+    "id": "295903",
+    "name": "Edge Miami"
+   },
+   "artists": [
+    {
+     "id": "26698",
+     "name": "Carlos Diaz"
+    },
+    {
+     "id": "119523",
+     "name": "Vampire Sex"
+    }
+   ],
+   "genres": [
+    {
+     "id": "6",
+     "name": "House"
+    },
+    {
+     "id": "15",
+     "name": "Tech House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12397498",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2397498",
+   "title": "Galantis",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "1805",
+    "name": "LIV Nightclub Miami"
+   },
+   "artists": [
+    {
+     "id": "53530",
+     "name": "Galantis"
+    }
+   ],
+   "genres": [
+    {
+     "id": "30",
+     "name": "Pop"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12455804",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2455804",
+   "title": "Emo Nite",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "147233",
+    "name": "The Ground at Club Space"
+   },
+   "artists": [],
+   "genres": [
+    {
+     "id": "55",
+     "name": "Post-Punk"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12459775",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2459775",
+   "title": "Lumia",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "$",
+   "isTicketed": false,
+   "venue": {
+    "id": "80115",
+    "name": "Do Not Sit On The Furniture"
+   },
+   "artists": [
+    {
+     "id": "135543",
+     "name": "Lumia"
+    }
+   ],
+   "genres": [
+    {
+     "id": "6",
+     "name": "House"
+    },
+    {
+     "id": "20",
+     "name": "Deep House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12460796",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2460796",
+   "title": "Simon Doty",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "24.60",
+   "isTicketed": true,
+   "venue": {
+    "id": "226768",
+    "name": "ZeyZey"
+   },
+   "artists": [
+    {
+     "id": "60733",
+     "name": "Simon Doty"
+    }
+   ],
+   "genres": [
+    {
+     "id": "6",
+     "name": "House"
+    },
+    {
+     "id": "20",
+     "name": "Deep House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12471077",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2471077",
+   "title": "Enzo is Burning",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "214717",
+    "name": "Jolene Downtown Miami"
+   },
+   "artists": [
+    {
+     "id": "139503",
+     "name": "Enzo is Burning"
+    },
+    {
+     "id": "29050",
+     "name": "Thunderpony"
+    },
+    {
+     "id": "131384",
+     "name": "Mick Jerome"
+    }
+   ],
+   "genres": [
+    {
+     "id": "15",
+     "name": "Tech House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12473657",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2473657",
+   "title": "C\u00e9cille Showcase",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "111722",
+    "name": "Floyd"
+   },
+   "artists": [
+    {
+     "id": "2415",
+     "name": "Nick Curly"
+    },
+    {
+     "id": "85958",
+     "name": "Andrew Azara"
+    },
+    {
+     "id": "16540",
+     "name": "Ms. Mada"
+    },
+    {
+     "id": "146538",
+     "name": "Lousy Lover"
+    }
+   ],
+   "genres": [
+    {
+     "id": "6",
+     "name": "House"
+    },
+    {
+     "id": "15",
+     "name": "Tech House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12486718",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2486718",
+   "title": "Nervous Fridays! Oscar G, Lazaro Casanova, Edgar V",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "0",
+   "isTicketed": false,
+   "venue": {
+    "id": "146933",
+    "name": "1-800-Lucky"
+   },
+   "artists": [
+    {
+     "id": "646",
+     "name": "Oscar G"
+    },
+    {
+     "id": "7356",
+     "name": "Lazaro Casanova"
+    }
+   ],
+   "genres": [
+    {
+     "id": "6",
+     "name": "House"
+    },
+    {
+     "id": "72",
+     "name": "Afro House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12499036",
+  "listingDate": "2026-07-31T00:00:00.000",
+  "event": {
+   "id": "2499036",
+   "title": "Jason Rault, Bandito Chico",
+   "date": "2026-07-31T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "283181",
+    "name": "Lion's Den"
+   },
+   "artists": [
+    {
+     "id": "68480",
+     "name": "Jason Rault"
+    }
+   ],
+   "genres": []
+  }
+ },
+ {
+  "id": "12493136",
+  "listingDate": "2026-08-01T00:00:00.000",
+  "event": {
+   "id": "2493136",
+   "title": "Island Rehab Project XII",
+   "date": "2026-08-01T00:00:00.000",
+   "cost": "20",
+   "isTicketed": true,
+   "venue": {
+    "id": "297813",
+    "name": "TBA - Bayshore Landing (Monty's Coconut Grove)"
+   },
+   "artists": [
+    {
+     "id": "6230",
+     "name": "Kike Roldan"
+    },
+    {
+     "id": "47381",
+     "name": "Atomyard"
+    },
+    {
+     "id": "96160",
+     "name": "Soto Music"
+    },
+    {
+     "id": "94535",
+     "name": "Penny Lane"
+    }
+   ],
+   "genres": [
+    {
+     "id": "20",
+     "name": "Deep House"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12496575",
+  "listingDate": "2026-08-01T00:00:00.000",
+  "event": {
+   "id": "2496575",
+   "title": "Tudo Bem.Zip: Dj Ray's Miami Debut",
+   "date": "2026-08-01T00:00:00.000",
+   "cost": "0",
+   "isTicketed": true,
+   "venue": {
+    "id": "168950",
+    "name": "The Corner"
+   },
+   "artists": [
+    {
+     "id": "164990",
+     "name": "Jean Sean"
+    }
+   ],
+   "genres": [
+    {
+     "id": "12",
+     "name": "Bass"
+    },
+    {
+     "id": "34",
+     "name": "Baile Funk"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12490942",
+  "listingDate": "2026-08-01T00:00:00.000",
+  "event": {
+   "id": "2490942",
+   "title": "FACE 2 FACE",
+   "date": "2026-08-01T00:00:00.000",
+   "cost": "",
+   "isTicketed": true,
+   "venue": {
+    "id": "189088",
+    "name": "Domicile"
+   },
+   "artists": [
+    {
+     "id": "156585",
+     "name": "N\u00cbBUL\u00c4"
+    },
+    {
+     "id": "92247",
+     "name": "Gioh Cecato"
+    },
+    {
+     "id": "74852",
+     "name": "Jay Toledo"
+    },
+    {
+     "id": "107450",
+     "name": "Naomi Luna"
+    }
+   ],
+   "genres": [
+    {
+     "id": "5",
+     "name": "Techno"
+    }
+   ]
+  }
+ },
+ {
+  "id": "12386148",
+  "listingDate": "2026-08-01T00:00:00.000",
+  "event": {
+   "id": "2386148",
+   "title": "Zeds Dead: Journey Of A Lifetime Tour",
+   "date": "2026-08-01T00:00:00.000",
+   "cost": "",
+   "isTicketed": false,
+   "venue": {
+    "id": "193830",
+    "name": "Factory Town"
+   },
+   "artists": [
+    {
+     "id": "26513",
+     "name": "Zeds Dead"
+    }
+   ],
+   "genres": [
+    {
+     "id": "12",
+     "name": "Bass"
+    }
+   ]
+  }
+ }
+]
