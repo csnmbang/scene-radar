@@ -14,3 +14,4 @@ wheels/
 data/
 .pytest_cache/
 dashboard.html
+.claude/settings.local.json
