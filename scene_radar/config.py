@@ -16,6 +16,8 @@ BEATPORT_GENRES = {
     "hard-techno": 2,
     "minimal-deep-tech": 14,
     "house": 5,
+    "melodic-house-techno": 90,
+    "progressive-house": 15,
 }
 
 # Human-readable labels for charts/genre buckets.
@@ -25,6 +27,8 @@ GENRE_LABELS = {
     "hard-techno": "Hard Techno",
     "minimal-deep-tech": "Minimal / Deep Tech",
     "house": "House",
+    "melodic-house-techno": "Melodic H&T",
+    "progressive-house": "Progressive House",
 }
 
 # Seconds to sleep between outbound requests (politeness).
@@ -64,10 +68,15 @@ GAP_MAX_BOOKINGS = 1
 RA_GENRE_TO_BUCKET = {
     "tech house": "tech-house",
     "techno": "techno-peak-time-driving",
+    "dub techno": "techno-peak-time-driving",
+    "acid": "techno-peak-time-driving",
     "hard techno": "hard-techno",
     "industrial techno": "hard-techno",
+    "industrial": "hard-techno",
+    "hardcore": "hard-techno",
     "hard dance": "hard-techno",
     "minimal": "minimal-deep-tech",
+    "minimal techno": "minimal-deep-tech",
     "deep tech": "minimal-deep-tech",
     "microhouse": "minimal-deep-tech",
     "house": "house",
@@ -76,4 +85,11 @@ RA_GENRE_TO_BUCKET = {
     "soulful house": "house",
     "funky house": "house",
     "disco": "house",
+    "melodic house & techno": "melodic-house-techno",
+    "melodic techno": "melodic-house-techno",
+    "melodic house": "melodic-house-techno",
+    "organic house": "melodic-house-techno",
+    "progressive house": "progressive-house",
+    "progressive": "progressive-house",
+    "trance": "progressive-house",
 }

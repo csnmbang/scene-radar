@@ -16,14 +16,15 @@ from Resident Advisor **plus** the Dice-only rooms — Club Space, Sable, M2).
 5. Tests: `uv run pytest`
 
 Re-running `run_all.py` on the same day reuses the on-disk cache and replaces
-that day's snapshot (never duplicates). Run it weekly — momentum scoring gets
-sharper once there are ≥ 2 snapshots to diff.
+that day's snapshot (never duplicates). A launchd agent
+(`com.carmensannicolas.scene-radar`, 9:00 AM daily) refreshes automatically;
+momentum scoring diffs against the previous snapshot.
 
 ## What's inside
 
 | Path | What |
 |---|---|
-| `collect_beatport.py` | Top 100 for 5 genres → `beatport_chart_entries` |
+| `collect_beatport.py` | Top 100 for 7 genres → `beatport_chart_entries` |
 | `collect_ra.py` | RA Miami events next 90d → `ra_events`, `ra_event_artists` |
 | `collect_dice.py` | Dice venue pages (Club Space / Sable / M2) → same tables, `source='dice'` |
 | `compute_scores.py` | Demand scores + gap table (`artist_scores`, `gaps`) |
@@ -35,8 +36,8 @@ sharper once there are ≥ 2 snapshots to diff.
 
 Dashboard views: **Gaps** (the product — filterable artist gap table),
 **Genres** (demand share vs supply share), **Venues** (who books what),
-**Supply** (raw event feed with RA/DICE source badges), **Matches** (join
-confidence).
+**Supply** (raw event feed with RA/DICE source badges), **Timeline** (entered
+radar date vs booked date, with lead days).
 
 ## How scoring works (tune in `scene_radar/config.py`)
 
@@ -54,8 +55,8 @@ purely rank-based (per spec). Artist names are normalized (lowercase,
 diacritics stripped, `(BR)`/`(DJ set)` suffixes dropped) and joined
 exact-first, then rapidfuzz `token_sort_ratio ≥ 90` **plus a per-token guard**
 — without the guard, "chris lake" fuzzy-matches "chris clarke" at 90.9 and a
-real booking gets credited to the wrong artist. Match confidence is visible in
-the Matches tab.
+real booking gets credited to the wrong artist. Matches are stored in
+`artist_matches` (queryable in DuckDB).
 
 ## Implementation notes / deviations from spec
 
@@ -72,8 +73,8 @@ the Matches tab.
   clubs 831/273769) — they ticket on Dice. The collector fetches just the
   three configured venue pages (`DICE_VENUES` in config). Dice event titles
   are the lineup ("Oliver Koletzki + Manumat"), so artists are parsed from
-  titles; Dice cards carry no genre tags, so those events sit outside the
-  genre supply-share view.
+  titles; Dice cards carry no genre tags, so their genre is inferred from
+  matched lineup artists' Beatport chart buckets in the supply-share view.
 - **Dashboard is generated static HTML** (`scene_radar/dashboard_template.html`
   + embedded JSON). Streamlit was dropped by request.
 

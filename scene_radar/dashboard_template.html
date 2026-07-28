@@ -20,6 +20,8 @@
     --s3: #199e70; /* hard techno */
     --s4: #c98500; /* minimal/deep tech */
     --s5: #d55181; /* house */
+    --s6: #008300; /* melodic h&t */
+    --s7: #9085e9; /* progressive house */
     color-scheme: dark;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -157,17 +159,19 @@ const BUCKET_COLOR = {
   "hard-techno": "var(--s3)",
   "minimal-deep-tech": "var(--s4)",
   "house": "var(--s5)",
+  "melodic-house-techno": "var(--s6)",
+  "progressive-house": "var(--s7)",
 };
 const LABEL_BY_KEY = Object.fromEntries(DATA.genreKeys.map((k, i) => [k, DATA.genreLabels[i]]));
 const KEY_BY_LABEL = Object.fromEntries(DATA.genreKeys.map((k, i) => [DATA.genreLabels[i], k]));
 
-const TABS = ["Gaps", "Genres", "Venues", "Supply", "Matches"];
+const TABS = ["Gaps", "Genres", "Venues", "Supply", "Timeline"];
 const nav = document.getElementById("nav");
 const main = document.getElementById("main");
 document.getElementById("snapshot").textContent =
   `snapshot ${DATA.snapshot} · built ${DATA.generated}`;
 document.getElementById("footer").textContent =
-  "Demand: Beatport Top 100 (5 genres) · Supply: RA Miami + Dice (Club Space, Sable, M2) · next 90 days";
+  "Demand: Beatport Top 100 (7 genres) · Supply: RA Miami + Dice (Club Space, Sable, M2) · next 90 days";
 
 TABS.forEach((t, i) => {
   const b = document.createElement("button");
@@ -280,7 +284,7 @@ const maxShare = Math.max(...DATA.genres.flatMap(g => [g.demand, g.supply]), 1);
 const genresSection = el(`<section>
   <div class="card">
     <h2>Genre heat vs Miami supply</h2>
-    <div class="sub">Demand = share of Beatport artist momentum per genre bucket. Supply = share of RA event genre tags (Dice cards carry no tags). Positive gap = under-served in Miami.</div>
+    <div class="sub">Demand = share of Beatport artist momentum per genre bucket (7 charts). Supply = share of Miami events per bucket — RA genre tags where present, otherwise inferred from the event's matched lineup artists. Sorted most under-served first. Positive gap = under-served in Miami.</div>
     <div class="legend">
       <span><span class="swatch" style="background:var(--s1)"></span>Demand (Beatport)</span>
       <span><span class="swatch" style="background:var(--s2)"></span>Supply (Miami events)</span>
@@ -304,7 +308,7 @@ const genresSection = el(`<section>
         <td class="num ${g.delta > 0 ? "delta-pos" : "delta-neg"}">${g.delta > 0 ? "+" : ""}${g.delta}</td>
       </tr>`).join("")}</tbody>
     </table></div>
-    ${DATA.unmapped ? `<div class="sub" style="margin-top:10px">${DATA.unmapped} RA events carried tags outside the five buckets (drum &amp; bass, disco edits, etc.) and are excluded from supply share.</div>` : ""}
+    <div class="sub" style="margin-top:10px">${DATA.inferred} untagged events classified via their lineups · ${DATA.unmapped} events unclassifiable (off-bucket tags or no matched artists) and excluded from supply share.</div>
   </div>
 </section>`);
 main.appendChild(genresSection);
@@ -377,25 +381,58 @@ const renderEvents = sortable(supplySection.querySelector("#ev-table"), evRows, 
 }, ["date", 1]);
 ["ev-search", "ev-source"].forEach(id => supplySection.querySelector("#" + id).addEventListener("input", renderEvents));
 
-/* ---------------- Matches ---------------- */
-const matchesSection = el(`<section>
+/* ---------------- Timeline ---------------- */
+const timelineSection = el(`<section>
   <div class="card">
-    <h2>Artist match confidence</h2>
-    <div class="sub">How Beatport chart names joined to Miami lineups. Exact = normalized string equality; fuzzy = rapidfuzz ≥ 90 with per-token guard.</div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Beatport artist</th><th>Lineup artist</th><th>Confidence</th><th>Method</th><th>Demand</th></tr></thead>
-      <tbody>${DATA.matches.map(m => `<tr>
-        <td style="font-weight:550">${esc(m.bp)}</td><td>${esc(m.ra)}</td>
-        <td>${scorebar(m.conf)}</td>
-        <td><span class="badge ${m.method === "fuzzy" ? "dice" : "ra"}">${m.method.toUpperCase()}</span></td>
-        <td class="num">${m.demand.toFixed(1)}</td>
-      </tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">No matches in this snapshot.</td></tr>`}</tbody>
+    <h2>Radar timeline</h2>
+    <div class="sub">When an artist first showed up on the radar vs. when a Miami date first appeared for them. Lead = days you knew before the booking surfaced. Receipts accumulate as daily snapshots stack up.</div>
+    <div class="controls">
+      <input type="search" id="tl-search" placeholder="Search artist…">
+      <select id="tl-status">
+        <option value="">All artists</option>
+        <option value="booked" selected>Booked since on radar</option>
+        <option value="open">Still open</option>
+      </select>
+      <label>min demand <input type="range" id="tl-demand" min="0" max="100" value="0"> <span id="tl-demand-v">0</span></label>
+      <span style="margin-left:auto;color:var(--muted);font-size:12px" id="tl-count"></span>
+    </div>
+    <div class="table-wrap"><table id="tl-table">
+      <thead><tr>
+        <th data-k="artist">Artist</th><th data-k="demand">Demand</th>
+        <th data-k="entered">Entered radar</th><th data-k="booked" class="sorted">Booked</th>
+        <th data-k="lead">Lead (days)</th><th>Where</th>
+      </tr></thead><tbody></tbody>
     </table></div>
   </div>
 </section>`);
-main.appendChild(matchesSection);
+main.appendChild(timelineSection);
+const tlRows = () => {
+  const q = timelineSection.querySelector("#tl-search").value.toLowerCase();
+  const st = timelineSection.querySelector("#tl-status").value;
+  const minD = +timelineSection.querySelector("#tl-demand").value;
+  return DATA.timeline.filter(t =>
+    t.demand >= minD &&
+    (!q || t.artist.toLowerCase().includes(q)) &&
+    (st === "" || (st === "booked") === (t.booked !== null)))
+    .map(t => ({...t, booked: t.booked ?? "", lead: t.lead ?? -1}));
+};
+const renderTimeline = sortable(timelineSection.querySelector("#tl-table"), tlRows, rows => {
+  timelineSection.querySelector("#tl-count").textContent = `${rows.length} artists`;
+  timelineSection.querySelector("#tl-table tbody").innerHTML = rows.slice(0, 300).map(t => `<tr>
+    <td style="font-weight:550">${esc(t.artist)}</td>
+    <td>${scorebar(t.demand)}</td>
+    <td class="num" style="white-space:nowrap">${t.entered ?? "—"}</td>
+    <td class="num" style="white-space:nowrap">${t.booked ? `<span class="pill zero">${t.booked}</span>` : `<span class="pill some">open</span>`}</td>
+    <td class="num">${t.lead >= 0 ? t.lead : "—"}</td>
+    <td style="color:var(--ink-2)">${esc(t.where || "—")}</td>
+  </tr>`).join("");
+}, ["booked", -1]);
+["tl-search", "tl-status"].forEach(id => timelineSection.querySelector("#" + id).addEventListener("input", renderTimeline));
+timelineSection.querySelector("#tl-demand").addEventListener("input", (e) => {
+  timelineSection.querySelector("#tl-demand-v").textContent = e.target.value; renderTimeline();
+});
 
-renderGaps(); renderVenues(); renderEvents();
+renderGaps(); renderVenues(); renderEvents(); renderTimeline();
 selectTab(0);
 </script>
 </body>

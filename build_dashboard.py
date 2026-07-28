@@ -49,30 +49,54 @@ def build_payload() -> dict:
             for b in buckets:
                 demand_mass[b] += demand / len(buckets)
 
+        # supply share: RA tag mapping first; events with no mapped tag (all of
+        # Dice, plus untagged RA events) fall back to the chart buckets of any
+        # lineup artist we matched to Beatport ("inferred from lineup").
+        artist_buckets: dict[str, set[str]] = {}
+        for norm, genres in con.execute(
+            "SELECT artist_norm, genres FROM artist_scores WHERE snapshot_date = ?", [snap]
+        ).fetchall():
+            artist_buckets[norm] = {b.strip() for b in genres.split(",") if b.strip() in GENRE_LABELS}
+        ra_to_bp = {ra: bp for bp, ra in con.execute(
+            "SELECT bp_artist_norm, ra_artist_norm FROM artist_matches WHERE snapshot_date = ?",
+            [snap],
+        ).fetchall()}
+
         supply_mass = {b: 0.0 for b in GENRE_LABELS}
         unmapped = 0
-        for (gstr,) in con.execute(
-            "SELECT genres FROM ra_events WHERE snapshot_date = ? AND source != 'dice'", [ra_snap]
+        inferred = 0
+        for eid, gstr in con.execute(
+            "SELECT event_id, genres FROM ra_events WHERE snapshot_date = ?", [ra_snap]
         ).fetchall():
             tags = [t.strip().lower() for t in (gstr or "").split(",") if t.strip()]
-            hit = False
-            for t in tags:
-                b = RA_GENRE_TO_BUCKET.get(t)
-                if b:
+            buckets = {RA_GENRE_TO_BUCKET[t] for t in tags if t in RA_GENRE_TO_BUCKET}
+            if not buckets:  # infer from matched lineup artists' chart buckets
+                lineup = [n for (n,) in con.execute(
+                    "SELECT artist_norm FROM ra_event_artists WHERE event_id = ? AND snapshot_date = ?",
+                    [eid, ra_snap]).fetchall()]
+                for n in lineup:
+                    buckets |= artist_buckets.get(ra_to_bp.get(n, n), set())
+                if buckets:
+                    inferred += 1
+            if buckets:
+                for b in buckets:
                     supply_mass[b] += 1
-                    hit = True
-            if tags and not hit:
+            else:
                 unmapped += 1
 
         td = sum(demand_mass.values()) or 1.0
         ts = sum(supply_mass.values()) or 1.0
-        genre_rows = [
-            {"label": label,
-             "demand": round(100 * demand_mass[b] / td, 1),
-             "supply": round(100 * supply_mass[b] / ts, 1),
-             "delta": round(100 * demand_mass[b] / td - 100 * supply_mass[b] / ts, 1)}
-            for b, label in GENRE_LABELS.items()
-        ]
+        genre_rows = sorted(
+            [
+                {"label": label,
+                 "demand": round(100 * demand_mass[b] / td, 1),
+                 "supply": round(100 * supply_mass[b] / ts, 1),
+                 "delta": round(100 * demand_mass[b] / td - 100 * supply_mass[b] / ts, 1)}
+                for b, label in GENRE_LABELS.items()
+            ],
+            key=lambda r: r["delta"],
+            reverse=True,  # concrete order: most under-served first, everywhere
+        )
 
         venues = [
             {"venue": r[0], "events": r[1], "artists": r[2], "cost": r[3] or "—",
@@ -106,21 +130,52 @@ def build_payload() -> dict:
             ).fetchall()
         ]
 
-        matches = [
-            {"bp": r[0], "ra": r[1], "conf": r[2], "method": r[3], "demand": r[4] or 0}
-            for r in con.execute(
-                """SELECT m.bp_artist_norm, m.ra_artist_norm, m.confidence, m.method,
-                          s.demand_score
-                   FROM artist_matches m
-                   LEFT JOIN artist_scores s
-                     ON s.artist_norm = m.bp_artist_norm AND s.snapshot_date = m.snapshot_date
-                   WHERE m.snapshot_date = ? ORDER BY s.demand_score DESC NULLS LAST""",
-                [snap],
-            ).fetchall()
-        ]
+        # Timeline: when each artist first hit the radar vs when a Miami
+        # booking first showed up for them. Grows a row of receipts per day.
+        entered = dict(con.execute(
+            "SELECT artist_norm, min(snapshot_date) FROM artist_scores GROUP BY artist_norm"
+        ).fetchall())
+        first_booked = dict(con.execute(
+            "SELECT artist_norm, min(snapshot_date) FROM gaps WHERE miami_bookings_90d > 0 GROUP BY artist_norm"
+        ).fetchall())
+
+        timeline = []
+        for norm, display, demand in con.execute(
+            "SELECT artist_norm, artist_display, demand_score FROM gaps WHERE snapshot_date = ?",
+            [snap],
+        ).fetchall():
+            ent = entered.get(norm)
+            bkd = first_booked.get(norm)
+            where = ""
+            if bkd is not None:
+                ra_norm = con.execute(
+                    "SELECT ra_artist_norm FROM artist_matches WHERE snapshot_date = ? AND bp_artist_norm = ?",
+                    [bkd, norm]).fetchone()
+                if ra_norm:
+                    where = " · ".join(
+                        f"{v or 'TBA'} ({d.strftime('%b %d')})"
+                        for d, v in con.execute(
+                            """SELECT DISTINCT e.event_date, e.venue_name
+                               FROM ra_events e JOIN ra_event_artists a
+                                 ON a.event_id = e.event_id AND a.snapshot_date = e.snapshot_date
+                               WHERE e.snapshot_date = ? AND a.artist_norm = ?
+                                 AND e.event_date >= ?
+                               ORDER BY e.event_date""",
+                            [bkd, ra_norm[0], bkd]).fetchall())
+            timeline.append({
+                "artist": display, "demand": demand,
+                "entered": ent.isoformat() if ent else None,
+                "booked": bkd.isoformat() if bkd else None,
+                "lead": (bkd - ent).days if (bkd and ent) else None,
+                "where": where,
+            })
+        timeline.sort(key=lambda r: (r["booked"] or "", r["demand"]), reverse=True)
 
         n_events_ra = sum(1 for e in events if e["source"] != "dice")
         n_events_dice = sum(1 for e in events if e["source"] == "dice")
+        n_matched = con.execute(
+            "SELECT count(*) FROM artist_matches WHERE snapshot_date = ?", [snap]
+        ).fetchone()[0]
         return {
             "snapshot": snap.isoformat(),
             "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -130,13 +185,14 @@ def build_payload() -> dict:
                 "eventsRa": n_events_ra,
                 "eventsDice": n_events_dice,
                 "venues": len(venues),
-                "matched": len(matches),
+                "matched": n_matched,
                 "hotGaps": sum(1 for g in gaps if g["demand"] >= 40 and g["bookings"] == 0),
             },
             "genreLabels": list(GENRE_LABELS.values()),
             "genreKeys": list(GENRE_LABELS.keys()),
-            "gaps": gaps, "genres": genre_rows, "unmapped": unmapped,
-            "venues": venues, "events": events, "matches": matches,
+            "gaps": gaps, "genres": genre_rows,
+            "unmapped": unmapped, "inferred": inferred,
+            "venues": venues, "events": events, "timeline": timeline,
         }
     finally:
         con.close()

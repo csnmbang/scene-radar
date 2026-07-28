@@ -57,6 +57,9 @@ def compute_scores(con: duckdb.DuckDBPyConnection) -> date:
     ).fetchall()
 
     prev_ranks: dict[tuple[str, str, int], int] = {}
+    prev_genres: set[str] = set()  # charts present last time; a chart we only
+    # started tracking today has no baseline, so its tracks must not count as
+    # "new entries" or velocity (they'd all get the W_NEW_ENTRY bonus at once)
     if prev is not None:
         for artist_norm, genre, track_id, rank in con.execute(
             """SELECT artist_norm, chart_genre, track_id, rank
@@ -64,6 +67,7 @@ def compute_scores(con: duckdb.DuckDBPyConnection) -> date:
             [prev],
         ).fetchall():
             prev_ranks[(artist_norm, genre, track_id)] = rank
+            prev_genres.add(genre)
 
     stats: dict[str, dict] = defaultdict(
         lambda: {"tracks": 0, "points": 0.0, "velocity": 0.0, "new": 0,
@@ -75,7 +79,7 @@ def compute_scores(con: duckdb.DuckDBPyConnection) -> date:
         s["points"] += (101 - rank) / 10.0
         s["genres"].add(genre)
         s["display"] = s["display"] or artist_raw
-        if prev is not None:
+        if prev is not None and genre in prev_genres:
             key = (artist_norm, genre, track_id)
             if key in prev_ranks:
                 s["velocity"] += prev_ranks[key] - rank
