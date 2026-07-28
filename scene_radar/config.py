@@ -37,7 +37,10 @@ REQUEST_DELAY_S = 1.0
 # --- Resident Advisor -------------------------------------------------------
 RA_AREA_ID = 38  # Miami (resolved via ra.co/graphql areas(searchTerm:"Miami"))
 RA_LOOKAHEAD_DAYS = 90
-RA_LOOKBACK_DAYS = 90  # trailing window: who *just* played Miami (recency signal)
+# Trailing window: who has played Miami recently. 12 months so "last played"
+# is genuinely informative (catches Miami Music Week, annual bookings) rather
+# than reporting "never" for anyone outside a short window.
+RA_LOOKBACK_DAYS = 365
 RA_PAGE_SIZE = 50
 # Apify actor to try first when APIFY_TOKEN is set. Override via env RA_APIFY_ACTOR.
 RA_APIFY_ACTOR_DEFAULT = "lhotanova~resident-advisor-scraper"
@@ -66,7 +69,9 @@ GAP_MAX_BOOKINGS = 1
 
 # An artist who played Miami recently isn't a real gap even with no future
 # dates. gap_score is scaled by min(1, days_since_last_played / this) —
-# played yesterday ≈ 0, played 90+ days ago (or never) = full gap.
+# played yesterday ≈ 0, played 90+ days ago (or not within RA_LOOKBACK_DAYS)
+# = full gap. Independent of the lookback window: we look back a year to
+# *report* last-played, but only discount the gap for the last 90 days.
 RECENCY_WINDOW_DAYS = 90
 
 # --- RA genre tag -> Beatport genre bucket (for the heat-vs-supply view) ----

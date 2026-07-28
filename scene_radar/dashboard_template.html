@@ -133,6 +133,23 @@
   .legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); }
   .legend .swatch { width: 9px; height: 9px; border-radius: 3px; }
 
+  .why { cursor: help; border-bottom: 1px dotted rgba(255,255,255,0.25); }
+  #tip {
+    position: fixed; z-index: 50; pointer-events: none; opacity: 0;
+    transition: opacity .12s; max-width: 420px;
+    background: #1b1b1f; border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px; padding: 12px 14px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+  }
+  #tip.on { opacity: 1; }
+  #tip .tip-h { font-size: 13px; font-weight: 650; margin-bottom: 2px; }
+  #tip .tip-sub { font-size: 11.5px; color: var(--muted); margin-bottom: 9px; }
+  #tip table { font-size: 12px; }
+  #tip td { padding: 3px 8px 3px 0; border: 0; vertical-align: top; }
+  #tip .tr-rank { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  #tip .tr-title { color: var(--ink); }
+  #tip .tr-mix, #tip .tr-label { color: var(--muted); font-size: 11px; }
+
   .note {
     border: 1px solid rgba(201,133,0,0.35); background: rgba(201,133,0,0.07);
     color: var(--ink-2); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 16px;
@@ -149,6 +166,7 @@
   <div class="snapshot" id="snapshot"></div>
 </header>
 <main id="main"></main>
+<div id="tip"></div>
 <footer id="footer"></footer>
 
 <script>
@@ -227,7 +245,7 @@ const gapsSection = el(`<section>
   </div>
   <div class="card">
     <h2>Gap table</h2>
-    <div class="sub">Artists trending on Beatport, ranked by gap score = demand ÷ (1 + upcoming Miami bookings), discounted if they played Miami in the last 90 days. Zero bookings + never played recently + high demand = pitch material.</div>
+    <div class="sub">Artists trending on Beatport, ranked by gap score = demand ÷ (1 + upcoming Miami bookings), discounted if they played Miami in the last ${DATA.recencyWindow} days. <strong>Hover any row</strong> to see the tracks driving the demand score.</div>
     <div class="controls">
       <input type="search" id="gap-search" placeholder="Search artist…">
       <label>min demand <input type="range" id="gap-demand" min="0" max="100" value="20"> <span id="gap-demand-v">20</span></label>
@@ -268,20 +286,59 @@ const gapRows = () => {
     (!activeBuckets.size || g.genres.some(x => activeBuckets.has(x))))
     .map(g => ({...g, lastPlayedSort: g.lastPlayed ?? 9999}));
 };
-const fmtAgo = (d) => d == null ? `<span style="color:var(--muted)">never</span>`
-  : d < 45 ? `<span class="pill some" title="played ${d} days ago — gap discounted">${d}d ago</span>`
-  : `${d}d ago`;
+// "never" would be a lie — we only see RA history back DATA.lookbackDays.
+const LOOKBACK_LABEL = DATA.lookbackDays >= 360 ? "12mo"
+  : DATA.lookbackDays >= 180 ? "6mo" : `${Math.round(DATA.lookbackDays / 30)}mo`;
+const NO_LINEUP_PCT = Math.round(100 * DATA.history.noLineup / Math.max(1, DATA.history.pastEvents));
+const fmtAgo = (d) => d == null
+  ? `<span style="color:var(--muted)" title="No Miami show found in ${LOOKBACK_LABEL} of RA history (${DATA.history.pastEvents} past events). Not proof they never played: ${NO_LINEUP_PCT}% of past events list no lineup at all.">none in ${LOOKBACK_LABEL}</span>`
+  : d < DATA.recencyWindow
+    ? `<span class="pill some" title="Played Miami ${d} days ago — gap score discounted">${d}d ago</span>`
+    : `${d}d ago`;
+
+// Track hover: why is this artist on the radar?
+const tip = document.getElementById("tip");
+function showTip(g, ev) {
+  if (!g.trackList || !g.trackList.length) return;
+  tip.innerHTML = `<div class="tip-h">${esc(g.artist)}</div>
+    <div class="tip-sub">${g.tracks} charting track${g.tracks === 1 ? "" : "s"}${g.new ? ` · ${g.new} new this snapshot` : ""}${g.velocity > 0 ? ` · climbing ${g.velocity} places` : ""}</div>
+    <table><tbody>${g.trackList.map(t => `<tr>
+      <td class="tr-rank">#${t.rank}</td>
+      <td><span class="tr-title">${esc(t.title)}</span>${t.mix && t.mix !== "Original Mix" ? ` <span class="tr-mix">(${esc(t.mix)})</span>` : ""}
+          <div class="tr-label">${esc(t.label || "—")} · ${esc(LABEL_BY_KEY[t.chart] || t.chart)}</div></td>
+    </tr>`).join("")}</tbody></table>
+    ${g.tracks > g.trackList.length ? `<div class="tip-sub" style="margin:8px 0 0">+ ${g.tracks - g.trackList.length} more</div>` : ""}`;
+  tip.classList.add("on");
+  moveTip(ev);
+}
+function moveTip(ev) {
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 16, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 12) x = ev.clientX - r.width - 16;
+  if (y + r.height > innerHeight - 12) y = Math.max(12, ev.clientY - r.height - 14);
+  tip.style.left = x + "px";
+  tip.style.top = y + "px";
+}
+function hideTip() { tip.classList.remove("on"); }
 const renderGaps = sortable(gapsSection.querySelector("#gap-table"), gapRows, (rows) => {
   gapsSection.querySelector("#gap-count").textContent = `${rows.length} artists`;
-  gapsSection.querySelector("#gap-table tbody").innerHTML = rows.slice(0, 200).map(g => `<tr>
-    <td style="font-weight:550">${esc(g.artist)}</td>
+  const shown = rows.slice(0, 200);
+  gapsSection.querySelector("#gap-table tbody").innerHTML = shown.map((g, i) => `<tr data-i="${i}">
+    <td style="font-weight:550"><span class="why">${esc(g.artist)}</span></td>
     <td>${scorebar(g.demand)}</td>
     <td class="num"><span class="pill ${g.bookings === 0 ? "zero" : "some"}">${g.bookings === 0 ? "OPEN" : g.bookings}</span></td>
-    <td class="num">${fmtAgo(g.lastPlayed)}</td>
+    <td class="num" style="white-space:nowrap">${fmtAgo(g.lastPlayed)}</td>
     <td>${scorebar(g.gap)}</td>
     <td class="num">${g.tracks}</td>
     <td>${genreTags(g.genres)}</td>
   </tr>`).join("");
+  // hover anywhere on a row to see the tracks behind the demand score
+  gapsSection.querySelectorAll("#gap-table tbody tr").forEach(tr => {
+    const g = shown[+tr.dataset.i];
+    tr.addEventListener("mouseenter", e => showTip(g, e));
+    tr.addEventListener("mousemove", moveTip);
+    tr.addEventListener("mouseleave", hideTip);
+  });
 }, ["gap", -1]);
 ["gap-search", "gap-book"].forEach(id => gapsSection.querySelector("#" + id).addEventListener("input", renderGaps));
 gapsSection.querySelector("#gap-demand").addEventListener("input", (e) => {

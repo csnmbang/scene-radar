@@ -12,7 +12,13 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-from scene_radar.config import GENRE_LABELS, PROJECT_ROOT, RA_GENRE_TO_BUCKET
+from scene_radar.config import (
+    GENRE_LABELS,
+    PROJECT_ROOT,
+    RA_GENRE_TO_BUCKET,
+    RA_LOOKBACK_DAYS,
+    RECENCY_WINDOW_DAYS,
+)
 from scene_radar.db import connect
 
 OUT = PROJECT_ROOT / "dashboard.html"
@@ -27,15 +33,29 @@ def build_payload() -> dict:
         ra_snap = con.execute("SELECT max(snapshot_date) FROM ra_events").fetchone()[0]
 
         today = datetime.now().date()
+
+        # Per-artist charting tracks — the "why is this artist here" hover.
+        track_detail: dict[str, list[dict]] = {}
+        for norm, rank, title, mix, label, chart in con.execute(
+            """SELECT artist_norm, rank, track_title, mix_name, label, chart_genre
+               FROM beatport_chart_entries WHERE snapshot_date = ?
+               ORDER BY artist_norm, rank""",
+            [snap],
+        ).fetchall():
+            track_detail.setdefault(norm, []).append(
+                {"rank": rank, "title": title, "mix": mix, "label": label, "chart": chart}
+            )
+
         gaps = [
-            {"artist": r[0], "demand": r[1], "bookings": r[2], "gap": r[3],
+            {"norm": r[9], "artist": r[0], "demand": r[1], "bookings": r[2], "gap": r[3],
              "genres": [g.strip() for g in (r[4] or "").split(",") if g.strip()],
              "tracks": r[5], "velocity": r[6], "new": r[7],
-             "lastPlayed": (today - r[8]).days if r[8] else None}
+             "lastPlayed": (today - r[8]).days if r[8] else None,
+             "trackList": track_detail.get(r[9], [])[:8]}
             for r in con.execute(
                 """SELECT g.artist_display, g.demand_score, g.miami_bookings_90d, g.gap_score,
                           g.genres, s.charting_tracks, s.rank_velocity, s.new_entries,
-                          g.last_played
+                          g.last_played, g.artist_norm
                    FROM gaps g JOIN artist_scores s
                      ON s.artist_norm = g.artist_norm AND s.snapshot_date = g.snapshot_date
                    WHERE g.snapshot_date = ? ORDER BY g.gap_score DESC""",
@@ -214,6 +234,17 @@ def build_payload() -> dict:
         n_matched = con.execute(
             "SELECT count(*) FROM artist_matches WHERE snapshot_date = ?", [snap]
         ).fetchone()[0]
+        # RA often lists a past event with no lineup — bound how confident
+        # "no show found" can be, and say so in the UI rather than implying
+        # certainty.
+        no_lineup, past_total = con.execute(
+            """SELECT count(*) FILTER (WHERE a.event_id IS NULL), count(*)
+               FROM ra_events e
+               LEFT JOIN (SELECT DISTINCT event_id, snapshot_date FROM ra_event_artists) a
+                 ON a.event_id = e.event_id AND a.snapshot_date = e.snapshot_date
+               WHERE e.snapshot_date = ? AND e.event_date < current_date""",
+            [ra_snap],
+        ).fetchone()
         return {
             "snapshot": snap.isoformat(),
             "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -228,6 +259,9 @@ def build_payload() -> dict:
             },
             "genreLabels": list(GENRE_LABELS.values()),
             "genreKeys": list(GENRE_LABELS.keys()),
+            "lookbackDays": RA_LOOKBACK_DAYS,
+            "recencyWindow": RECENCY_WINDOW_DAYS,
+            "history": {"pastEvents": past_total, "noLineup": no_lineup},
             "gaps": gaps, "genres": genre_rows,
             "unmapped": unmapped, "inferred": inferred,
             "venues": venues, "events": events, "timeline": timeline,
