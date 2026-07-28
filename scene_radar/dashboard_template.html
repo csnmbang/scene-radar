@@ -227,7 +227,7 @@ const gapsSection = el(`<section>
   </div>
   <div class="card">
     <h2>Gap table</h2>
-    <div class="sub">Artists trending on Beatport, ranked by gap score = demand ÷ (1 + Miami bookings). Zero-booking + high demand = pitch material.</div>
+    <div class="sub">Artists trending on Beatport, ranked by gap score = demand ÷ (1 + upcoming Miami bookings), discounted if they played Miami in the last 90 days. Zero bookings + never played recently + high demand = pitch material.</div>
     <div class="controls">
       <input type="search" id="gap-search" placeholder="Search artist…">
       <label>min demand <input type="range" id="gap-demand" min="0" max="100" value="20"> <span id="gap-demand-v">20</span></label>
@@ -242,6 +242,7 @@ const gapsSection = el(`<section>
     <div class="table-wrap"><table id="gap-table">
       <thead><tr>
         <th data-k="artist">Artist</th><th data-k="demand">Demand</th><th data-k="bookings">Bookings 90d</th>
+        <th data-k="lastPlayedSort">Last played</th>
         <th data-k="gap" class="sorted">Gap score</th><th data-k="tracks">Tracks</th><th>Charting on</th>
       </tr></thead><tbody></tbody>
     </table></div>
@@ -264,14 +265,19 @@ const gapRows = () => {
   return DATA.gaps.filter(g =>
     g.demand >= minD && g.bookings <= maxB &&
     (!q || g.artist.toLowerCase().includes(q)) &&
-    (!activeBuckets.size || g.genres.some(x => activeBuckets.has(x))));
+    (!activeBuckets.size || g.genres.some(x => activeBuckets.has(x))))
+    .map(g => ({...g, lastPlayedSort: g.lastPlayed ?? 9999}));
 };
+const fmtAgo = (d) => d == null ? `<span style="color:var(--muted)">never</span>`
+  : d < 45 ? `<span class="pill some" title="played ${d} days ago — gap discounted">${d}d ago</span>`
+  : `${d}d ago`;
 const renderGaps = sortable(gapsSection.querySelector("#gap-table"), gapRows, (rows) => {
   gapsSection.querySelector("#gap-count").textContent = `${rows.length} artists`;
   gapsSection.querySelector("#gap-table tbody").innerHTML = rows.slice(0, 200).map(g => `<tr>
     <td style="font-weight:550">${esc(g.artist)}</td>
     <td>${scorebar(g.demand)}</td>
     <td class="num"><span class="pill ${g.bookings === 0 ? "zero" : "some"}">${g.bookings === 0 ? "OPEN" : g.bookings}</span></td>
+    <td class="num">${fmtAgo(g.lastPlayed)}</td>
     <td>${scorebar(g.gap)}</td>
     <td class="num">${g.tracks}</td>
     <td>${genreTags(g.genres)}</td>

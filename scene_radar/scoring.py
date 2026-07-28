@@ -16,7 +16,12 @@ now that weren't in the previous snapshot. On the very first run there is no
 previous snapshot, so velocity and new_entries are 0 and the score is purely
 rank-based — exactly what the spec asks for.
 
-gap_score = demand_score * (1 / (1 + miami_bookings_90d))
+gap_score = demand_score * (1 / (1 + miami_bookings_90d)) * recency_factor
+
+recency_factor = min(1, days_since_last_miami_show / RECENCY_WINDOW_DAYS):
+an artist who played Miami last weekend isn't a gap even with zero future
+dates — the market already has them. Never played (or played 90+ days ago)
+= full gap.
 """
 
 from collections import defaultdict
@@ -25,6 +30,7 @@ from datetime import date, datetime
 import duckdb
 
 from .config import (
+    RECENCY_WINDOW_DAYS,
     W_CHART_POINTS,
     W_NEW_ENTRY,
     W_TRACK_COUNT,
@@ -155,6 +161,18 @@ def compute_gaps(con: duckdb.DuckDBPyConnection) -> int:
     )
     match_map = {bp: ra for bp, ra, _, _ in matches}
 
+    # most recent PAST Miami show per artist key, across ALL snapshots —
+    # history accumulates, so shows collected weeks ago still count here
+    last_played: dict[str, object] = dict(
+        con.execute(
+            """SELECT a.artist_norm, max(e.event_date)
+               FROM ra_event_artists a
+               JOIN ra_events e ON e.event_id = a.event_id AND e.snapshot_date = a.snapshot_date
+               WHERE e.event_date < current_date
+               GROUP BY a.artist_norm"""
+        ).fetchall()
+    )
+
     scores = con.execute(
         """SELECT artist_norm, artist_display, demand_score, genres
            FROM artist_scores WHERE snapshot_date = ?""",
@@ -162,17 +180,21 @@ def compute_gaps(con: duckdb.DuckDBPyConnection) -> int:
     ).fetchall()
 
     now = datetime.now()
+    today = date.today()
     replace_snapshot(con, "gaps", latest)
     rows = []
     for artist_norm, display, demand, genres in scores:
-        bookings = booking_counts.get(match_map.get(artist_norm, ""), 0)
-        gap = round(demand * (1.0 / (1.0 + bookings)), 2)
-        rows.append((now, latest, artist_norm, display, demand, bookings, gap, genres))
+        ra_key = match_map.get(artist_norm, "")
+        bookings = booking_counts.get(ra_key, 0)
+        lp = last_played.get(ra_key)
+        recency = min(1.0, (today - lp).days / RECENCY_WINDOW_DAYS) if lp else 1.0
+        gap = round(demand * (1.0 / (1.0 + bookings)) * recency, 2)
+        rows.append((now, latest, artist_norm, display, demand, bookings, gap, genres, lp))
     con.executemany(
         """INSERT INTO gaps
            (computed_at, snapshot_date, artist_norm, artist_display, demand_score,
-            miami_bookings_90d, gap_score, genres)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            miami_bookings_90d, gap_score, genres, last_played)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         rows,
     )
     return len(rows)

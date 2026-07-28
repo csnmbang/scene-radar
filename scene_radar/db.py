@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS gaps (
     gap_score DOUBLE NOT NULL,
     genres VARCHAR
 );
+
+-- columns added after first release (no-ops when already present)
+ALTER TABLE gaps ADD COLUMN IF NOT EXISTS last_played DATE;
 """
 
 

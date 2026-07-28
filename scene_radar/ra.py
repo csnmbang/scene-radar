@@ -22,6 +22,7 @@ from .config import (
     RA_APIFY_ACTOR_DEFAULT,
     RA_AREA_ID,
     RA_LOOKAHEAD_DAYS,
+    RA_LOOKBACK_DAYS,
     RA_PAGE_SIZE,
     RAW_DIR,
     REQUEST_DELAY_S,
@@ -86,14 +87,16 @@ def _gql_page(page: int, start: date, end: date) -> dict:
 
 
 def fetch_graphql(cache_dir: Path, force: bool = False) -> list[dict]:
-    """All Miami listings for the next RA_LOOKAHEAD_DAYS, cached per snapshot day."""
+    """All Miami listings from RA_LOOKBACK_DAYS ago through RA_LOOKAHEAD_DAYS
+    ahead, cached per snapshot day. The trailing window powers the
+    'last played' recency signal."""
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / "ra_miami_graphql.json"
+    cache_file = cache_dir / f"ra_miami_graphql_pm{RA_LOOKBACK_DAYS}.json"
     if cache_file.exists() and not force:
         return json.loads(cache_file.read_text())
 
-    start = date.today()
-    end = start + timedelta(days=RA_LOOKAHEAD_DAYS)
+    start = date.today() - timedelta(days=RA_LOOKBACK_DAYS)
+    end = date.today() + timedelta(days=RA_LOOKAHEAD_DAYS)
     listings: list[dict] = []
     page = 1
     total = None

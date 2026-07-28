@@ -26,13 +26,16 @@ def build_payload() -> dict:
             raise SystemExit("No data — run `uv run python run_all.py` first.")
         ra_snap = con.execute("SELECT max(snapshot_date) FROM ra_events").fetchone()[0]
 
+        today = datetime.now().date()
         gaps = [
             {"artist": r[0], "demand": r[1], "bookings": r[2], "gap": r[3],
              "genres": [g.strip() for g in (r[4] or "").split(",") if g.strip()],
-             "tracks": r[5], "velocity": r[6], "new": r[7]}
+             "tracks": r[5], "velocity": r[6], "new": r[7],
+             "lastPlayed": (today - r[8]).days if r[8] else None}
             for r in con.execute(
                 """SELECT g.artist_display, g.demand_score, g.miami_bookings_90d, g.gap_score,
-                          g.genres, s.charting_tracks, s.rank_velocity, s.new_entries
+                          g.genres, s.charting_tracks, s.rank_velocity, s.new_entries,
+                          g.last_played
                    FROM gaps g JOIN artist_scores s
                      ON s.artist_norm = g.artist_norm AND s.snapshot_date = g.snapshot_date
                    WHERE g.snapshot_date = ? ORDER BY g.gap_score DESC""",
@@ -111,6 +114,7 @@ def build_payload() -> dict:
                    LEFT JOIN ra_event_artists a
                      ON a.event_id = e.event_id AND a.snapshot_date = e.snapshot_date
                    WHERE e.snapshot_date = ? AND venue_name IS NOT NULL
+                     AND e.event_date >= current_date
                    GROUP BY venue_name ORDER BY 2 DESC""",
                 [ra_snap],
             ).fetchall()
