@@ -156,7 +156,10 @@
   }
   .delta-pos { color: #4fbf95; }
   .delta-neg { color: var(--muted); }
-  footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px 0 40px; }
+  footer {
+    color: var(--muted); font-size: 12px; text-align: center;
+    padding: 20px 24px 40px; line-height: 1.7; max-width: 780px; margin: 0 auto;
+  }
 </style>
 </head>
 <body>
@@ -189,8 +192,9 @@ const nav = document.getElementById("nav");
 const main = document.getElementById("main");
 document.getElementById("snapshot").textContent =
   `snapshot ${DATA.snapshot} · built ${DATA.generated}`;
-document.getElementById("footer").textContent =
-  "Demand: Beatport Top 100 (7 genres) · Supply: RA Miami + Dice (Club Space, Sable, M2) · next 90 days";
+document.getElementById("footer").innerHTML =
+  `Demand: Beatport Top 100 (7 genres) · Supply: Resident Advisor Miami + Dice + manual adds · next 90 days<br>
+   Club Space, Sable and M2 ticket on Dice and never post upcoming events on RA, so their genre mix is inferred from lineups rather than tags.`;
 
 TABS.forEach((t, i) => {
   const b = document.createElement("button");
@@ -290,11 +294,13 @@ const gapRows = () => {
 const LOOKBACK_LABEL = DATA.lookbackDays >= 360 ? "12mo"
   : DATA.lookbackDays >= 180 ? "6mo" : `${Math.round(DATA.lookbackDays / 30)}mo`;
 const NO_LINEUP_PCT = Math.round(100 * DATA.history.noLineup / Math.max(1, DATA.history.pastEvents));
+// Past the discount window, days stop being meaningful and start being wide —
+// switch to months so the column stays one scannable width.
 const fmtAgo = (d) => d == null
   ? `<span style="color:var(--muted)" title="No Miami show found in ${LOOKBACK_LABEL} of RA history (${DATA.history.pastEvents} past events). Not proof they never played: ${NO_LINEUP_PCT}% of past events list no lineup at all.">none in ${LOOKBACK_LABEL}</span>`
   : d < DATA.recencyWindow
     ? `<span class="pill some" title="Played Miami ${d} days ago — gap score discounted">${d}d ago</span>`
-    : `${d}d ago`;
+    : `<span title="Played Miami ${d} days ago">${Math.round(d / 30)}mo ago</span>`;
 
 // Track hover: why is this artist on the radar?
 const tip = document.getElementById("tip");
@@ -382,7 +388,6 @@ main.appendChild(genresSection);
 /* ---------------- Venues ---------------- */
 const maxEv = Math.max(...DATA.venues.map(v => v.events), 1);
 const venuesSection = el(`<section>
-  <div class="note">Supply now includes Dice-only rooms (Club Space, Sable, M2) that never post on RA. Genre mix for those is inferred from lineups, not tags.</div>
   <div class="card">
     <h2>Who books the most</h2>
     <div class="sub">Upcoming events per venue, next 90 days</div>
@@ -421,7 +426,7 @@ const supplySection = el(`<section>
       <span style="margin-left:auto;color:var(--muted);font-size:12px" id="ev-count"></span>
     </div>
     <div class="table-wrap"><table id="ev-table">
-      <thead><tr><th data-k="date" class="sorted">Date</th><th data-k="name">Event</th><th>Lineup</th><th data-k="venue">Venue</th><th data-k="price">Price</th><th>Source</th></tr></thead>
+      <thead><tr><th data-k="date" class="sorted">Date</th><th data-k="name">Event</th><th>Lineup</th><th data-k="venue">Venue</th><th data-k="priceSort">Price</th><th>Source</th></tr></thead>
       <tbody></tbody>
     </table></div>
   </div>
@@ -433,7 +438,9 @@ const evRows = () => {
   return DATA.events.filter(e =>
     (!src || (src === "graphql" ? (e.source !== "dice" && e.source !== "manual") : e.source === src)) &&
     (!q || e.name.toLowerCase().includes(q) || e.venue.toLowerCase().includes(q) ||
-      e.artists.some(a => a.toLowerCase().includes(q))));
+      e.artists.some(a => a.toLowerCase().includes(q))))
+    // unpriced events sort last rather than reading as free
+    .map(e => ({...e, priceSort: e.priceValue ?? -1}));
 };
 const renderEvents = sortable(supplySection.querySelector("#ev-table"), evRows, rows => {
   supplySection.querySelector("#ev-count").textContent = `${rows.length} events`;

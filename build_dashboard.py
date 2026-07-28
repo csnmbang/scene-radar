@@ -8,6 +8,7 @@ Colors are the validated dark-mode categorical palette (see README).
 """
 
 import json
+import re
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -122,7 +123,8 @@ def build_payload() -> dict:
         )
 
         venues = [
-            {"venue": r[0], "events": r[1], "artists": r[2], "cost": r[3] or "—",
+            {"venue": r[0], "events": r[1], "artists": r[2],
+             "cost": normalize_price(r[3])[0],
              "source": r[5], "topGenres": _top_tags(r[4])}
             for r in con.execute(
                 """SELECT venue_name, count(DISTINCT e.event_id),
@@ -142,7 +144,9 @@ def build_payload() -> dict:
 
         events = [
             {"date": r[0].isoformat(), "name": r[1], "venue": r[2] or "TBA",
-             "price": r[3] or "—", "source": r[4],
+             "price": normalize_price(r[3])[0],
+             "priceValue": normalize_price(r[3])[1],
+             "source": r[4],
              "artists": [a for (a,) in con.execute(
                  "SELECT artist_raw FROM ra_event_artists WHERE event_id = ? AND snapshot_date = ?",
                  [r[5], ra_snap]).fetchall()]}
@@ -269,6 +273,34 @@ def build_payload() -> dict:
         }
     finally:
         con.close()
+
+
+_PRICE_NUM = re.compile(r"\d+(?:[.,]\d+)?")
+
+
+def normalize_price(raw) -> tuple[str, float | None]:
+    """Sources disagree wildly: RA sends None, a bare '$' tier, plain numbers
+    ('20', '34.10'), a European decimal comma ('18,95'), '$20+' and
+    '$219-$439'; Dice sends 'From $30' / 'From Free'. Render one consistent
+    column and return a sortable value alongside it."""
+    if raw is None or not str(raw).strip():
+        return "—", None
+    s = str(raw).strip()
+    low = s.lower()
+    if "free" in low:
+        return "Free", 0.0
+    nums = [float(n.replace(",", ".")) for n in _PRICE_NUM.findall(s)]
+    if not nums:
+        # bare '$' / '$$' is RA's relative tier, not an amount
+        return (s, None) if set(s) == {"$"} else ("—", None)
+    if max(nums) == 0:
+        return "Free", 0.0
+    lo, hi = min(nums), max(nums)
+    if len(nums) > 1 and hi != lo:
+        return f"${lo:,.0f}–{hi:,.0f}", lo
+    prefix = "from " if low.startswith("from") else ""
+    suffix = "+" if s.endswith("+") else ""
+    return f"{prefix}${lo:,.0f}{suffix}", lo
 
 
 def _top_tags(s, n: int = 3) -> str:
