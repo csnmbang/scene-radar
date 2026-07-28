@@ -1,1 +1,52 @@
-[]
+[
+ {
+  "date": "2026-09-04",
+  "name": "Kevin de Vries + Linska + Son Of Son + Differ + Siegel",
+  "venue": "Club Space Miami",
+  "artists": [
+   "Kevin de Vries",
+   "Linska",
+   "Son Of Son",
+   "Differ",
+   "Siegel"
+  ]
+ },
+ {
+  "date": "2026-09-05",
+  "name": "Prospa + Jamback + Silvie Loto + Ms. Mada + Danyelino + Thunderpony",
+  "venue": "Club Space Miami",
+  "artists": [
+   "Prospa",
+   "Jamback",
+   "Silvie Loto",
+   "Ms. Mada",
+   "Danyelino",
+   "Thunderpony"
+  ]
+ },
+ {
+  "date": "2026-09-11",
+  "name": "Boys Noize + DJ Gigola + Skin On Skin + Cole Knight + True Vine + R/V Calypso",
+  "venue": "Club Space Miami",
+  "artists": [
+   "Boys Noize",
+   "DJ Gigola",
+   "Skin On Skin",
+   "Cole Knight",
+   "True Vine",
+   "R/V Calypso"
+  ]
+ },
+ {
+  "date": "2026-09-18",
+  "name": "Shimza + Joe Kay + Joezi + Thunderpony + Monoky",
+  "venue": "Club Space Miami",
+  "artists": [
+   "Shimza",
+   "Joe Kay",
+   "Joezi",
+   "Thunderpony",
+   "Monoky"
+  ]
+ }
+]
