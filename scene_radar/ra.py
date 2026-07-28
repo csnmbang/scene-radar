@@ -221,10 +221,12 @@ def write_snapshot(con, events: list[RAEvent], snapshot_date: date | None = None
     snapshot_date = snapshot_date or date.today()
     now = datetime.now()
     con.execute(
-        "DELETE FROM ra_events WHERE snapshot_date = ? AND source != 'dice'", [snapshot_date]
+        "DELETE FROM ra_events WHERE snapshot_date = ? AND source NOT IN ('dice', 'manual')",
+        [snapshot_date],
     )
     con.execute(
-        "DELETE FROM ra_event_artists WHERE snapshot_date = ? AND event_id NOT LIKE 'dice:%'",
+        """DELETE FROM ra_event_artists WHERE snapshot_date = ?
+           AND event_id NOT LIKE 'dice:%' AND event_id NOT LIKE 'manual:%'""",
         [snapshot_date],
     )
     con.executemany(

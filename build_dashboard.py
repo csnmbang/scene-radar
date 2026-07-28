@@ -171,6 +171,40 @@ def build_payload() -> dict:
             })
         timeline.sort(key=lambda r: (r["booked"] or "", r["demand"]), reverse=True)
 
+        # Receipts: did the radar see artists before Miami booked them?
+        called = [t for t in timeline if t["lead"] is not None and t["lead"] > 0]
+        median_lead = None
+        if called:
+            leads = sorted(t["lead"] for t in called)
+            median_lead = leads[len(leads) // 2]
+        # 30-day hot-gap conversion: of artists first seen as a hot gap
+        # (demand>=40, 0 bookings) at least 30 days ago, how many got booked
+        # within 30 days of that sighting? Needs >=30 days of snapshots.
+        conversion = None
+        cohort = con.execute(
+            """WITH first_hot AS (
+                 SELECT artist_norm, min(snapshot_date) AS hot_date
+                 FROM gaps WHERE demand_score >= 40 AND miami_bookings_90d = 0
+                 GROUP BY artist_norm)
+               SELECT count(*),
+                      count(*) FILTER (WHERE b.booked_date IS NOT NULL
+                                       AND b.booked_date <= f.hot_date + INTERVAL 30 DAY)
+               FROM first_hot f
+               LEFT JOIN (SELECT artist_norm, min(snapshot_date) AS booked_date
+                          FROM gaps WHERE miami_bookings_90d > 0 GROUP BY artist_norm) b
+                 USING (artist_norm)
+               WHERE f.hot_date <= ? - INTERVAL 30 DAY""",
+            [snap],
+        ).fetchone()
+        if cohort and cohort[0]:
+            conversion = round(100 * cohort[1] / cohort[0], 1)
+        receipts = {
+            "called": len(called),
+            "medianLead": median_lead,
+            "conversion30d": conversion,
+            "trackingDays": (snap - min(entered.values())).days + 1 if entered else 1,
+        }
+
         n_events_ra = sum(1 for e in events if e["source"] != "dice")
         n_events_dice = sum(1 for e in events if e["source"] == "dice")
         n_matched = con.execute(
@@ -193,6 +227,7 @@ def build_payload() -> dict:
             "gaps": gaps, "genres": genre_rows,
             "unmapped": unmapped, "inferred": inferred,
             "venues": venues, "events": events, "timeline": timeline,
+            "receipts": receipts,
         }
     finally:
         con.close()

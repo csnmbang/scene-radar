@@ -11,7 +11,8 @@ wheels/
 
 # Scene Radar
 .env
-data/
+data/raw/
+data/logs/
 .pytest_cache/
 dashboard.html
 .claude/settings.local.json

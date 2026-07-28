@@ -1,0 +1,54 @@
+name: daily-radar
+
+on:
+  schedule:
+    - cron: "5 13 * * *" # 9:05 AM Miami (EDT); drifts to 8:05 in EST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-radar
+  cancel-in-progress: false
+
+jobs:
+  collect-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Run pipeline (collect → score → build dashboard)
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: uv run python run_all.py
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      - name: Commit updated snapshots
+        run: |
+          git config user.name "scene-radar-bot"
+          git config user.email "actions@github.com"
+          git add data/scene_radar.duckdb manual_events.json
+          git diff --cached --quiet || git commit -m "Daily snapshot $(date -u +%F)"
+          git pull --rebase origin master
+          git push origin master
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p site
+          cp dashboard.html site/index.html
+          echo "radar.xtremedigits.com" > site/CNAME
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - uses: actions/deploy-pages@v4

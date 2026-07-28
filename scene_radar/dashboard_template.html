@@ -115,6 +115,7 @@
   .badge { font-size: 10.5px; padding: 2px 7px; border-radius: 5px; font-weight: 600; letter-spacing: .04em; }
   .badge.dice { background: rgba(213,81,129,0.16); color: #e08bad; }
   .badge.ra { background: rgba(25,158,112,0.16); color: #4fbf95; }
+  .badge.manual { background: rgba(144,133,233,0.16); color: #a99ff0; }
   .gtag { display: inline-flex; align-items: center; gap: 5px; margin-right: 8px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
   .gtag .swatch { width: 7px; height: 7px; border-radius: 50%; }
 
@@ -185,6 +186,8 @@ function selectTab(i) {
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const srcBadge = (s) => s === "dice" ? `<span class="badge dice">DICE</span>`
+  : s === "manual" ? `<span class="badge manual">MANUAL</span>` : `<span class="badge ra">RA</span>`;
 const el = (html) => { const d = document.createElement("div"); d.innerHTML = html; return d.firstElementChild; };
 
 function scorebar(v, max = 100) {
@@ -340,7 +343,7 @@ const renderVenues = sortable(venuesSection.querySelector("#venue-table"), () =>
     <td style="font-weight:550">${esc(v.venue)}</td>
     <td class="num">${v.events}</td><td class="num">${v.artists}</td>
     <td class="num">${esc(v.cost)}</td><td>${esc(v.topGenres)}</td>
-    <td><span class="badge ${v.source === "dice" ? "dice" : "ra"}">${v.source === "dice" ? "DICE" : "RA"}</span></td>
+    <td>${srcBadge(v.source)}</td>
   </tr>`).join("");
 }, ["events", -1]);
 
@@ -351,7 +354,7 @@ const supplySection = el(`<section>
     <div class="sub">The raw supply feed the gap counts come from</div>
     <div class="controls">
       <input type="search" id="ev-search" placeholder="Search event, artist, venue…">
-      <select id="ev-source"><option value="">All sources</option><option value="graphql">RA</option><option value="dice">Dice</option></select>
+      <select id="ev-source"><option value="">All sources</option><option value="graphql">RA</option><option value="dice">Dice</option><option value="manual">Manual</option></select>
       <span style="margin-left:auto;color:var(--muted);font-size:12px" id="ev-count"></span>
     </div>
     <div class="table-wrap"><table id="ev-table">
@@ -365,7 +368,7 @@ const evRows = () => {
   const q = supplySection.querySelector("#ev-search").value.toLowerCase();
   const src = supplySection.querySelector("#ev-source").value;
   return DATA.events.filter(e =>
-    (!src || (src === "dice") === (e.source === "dice")) &&
+    (!src || (src === "graphql" ? (e.source !== "dice" && e.source !== "manual") : e.source === src)) &&
     (!q || e.name.toLowerCase().includes(q) || e.venue.toLowerCase().includes(q) ||
       e.artists.some(a => a.toLowerCase().includes(q))));
 };
@@ -376,13 +379,20 @@ const renderEvents = sortable(supplySection.querySelector("#ev-table"), evRows, 
     <td style="font-weight:550">${esc(e.name)}</td>
     <td style="color:var(--ink-2);max-width:340px">${esc(e.artists.join(", ") || "—")}</td>
     <td>${esc(e.venue)}</td><td class="num">${esc(e.price)}</td>
-    <td><span class="badge ${e.source === "dice" ? "dice" : "ra"}">${e.source === "dice" ? "DICE" : "RA"}</span></td>
+    <td>${srcBadge(e.source)}</td>
   </tr>`).join("");
 }, ["date", 1]);
 ["ev-search", "ev-source"].forEach(id => supplySection.querySelector("#" + id).addEventListener("input", renderEvents));
 
 /* ---------------- Timeline ---------------- */
+const R = DATA.receipts;
 const timelineSection = el(`<section>
+  <div class="stats">
+    <div class="stat"><div class="v hot">${R.called}</div><div class="k">artists flagged before Miami booked them</div></div>
+    <div class="stat"><div class="v">${R.medianLead ?? "—"}</div><div class="k">median lead time (days)</div></div>
+    <div class="stat"><div class="v">${R.conversion30d != null ? R.conversion30d + "%" : "—"}</div><div class="k">hot gaps booked within 30d${R.conversion30d == null ? " (needs 30d of history)" : ""}</div></div>
+    <div class="stat"><div class="v">${R.trackingDays}</div><div class="k">days of snapshots</div></div>
+  </div>
   <div class="card">
     <h2>Radar timeline</h2>
     <div class="sub">When an artist first showed up on the radar vs. when a Miami date first appeared for them. Lead = days you knew before the booking surfaced. Receipts accumulate as daily snapshots stack up.</div>
