@@ -13,6 +13,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+from scene_radar import calls as calls_mod
 from scene_radar.config import (
     GENRE_LABELS,
     PROJECT_ROOT,
@@ -270,6 +271,8 @@ def build_payload() -> dict:
             "unmapped": unmapped, "inferred": inferred,
             "venues": venues, "events": events, "timeline": timeline,
             "receipts": receipts,
+            "calls": calls_mod.load(),
+            "scoreboard": calls_mod.scoreboard(calls_mod.load()),
         }
     finally:
         con.close()

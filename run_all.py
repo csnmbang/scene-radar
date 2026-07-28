@@ -9,7 +9,7 @@ import traceback
 
 from dotenv import load_dotenv
 
-from scene_radar import beatport, dice, manual, ra
+from scene_radar import beatport, calls, dice, manual, ra
 from scene_radar.db import connect
 from scene_radar.scoring import compute_gaps, compute_scores
 
@@ -57,6 +57,11 @@ def main() -> int:
         snap = compute_scores(con)
         n_gaps = compute_gaps(con)
         print(f"  snapshot {snap}: {n_gaps} artists scored")
+
+        for c in calls.auto_resolve(con):
+            mark = "HIT" if c["status"] == "hit" else "miss"
+            lead = f" (lead {c['leadDays']}d)" if c.get("leadDays") is not None else ""
+            print(f"  call {c['id']} {mark}: {c['subject']}{lead}")
     finally:
         con.close()
 

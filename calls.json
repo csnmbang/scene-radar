@@ -1,0 +1,80 @@
+[
+ {
+  "id": "call-001",
+  "madeOn": "2026-07-28",
+  "madeAt": "2026-07-28T13:29:02",
+  "kind": "artist",
+  "subject": "Vlace",
+  "subjectNorm": "vlace",
+  "claim": "Gets a Miami booking announced",
+  "rationale": "72.3 demand, 6 hard techno tracks incl. #7 Cherry Blossom, no Miami show on record in 12mo",
+  "horizonDays": 120,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "display": "Vlace",
+   "demandScore": 72.26,
+   "bookingsAtCall": 0,
+   "gapScore": 72.26,
+   "lastPlayedAtCall": null,
+   "chartingTracks": 6,
+   "genres": "hard-techno",
+   "bestChartRank": {
+    "chart": "hard-techno",
+    "rank": 7
+   },
+   "snapshotDate": "2026-07-28"
+  }
+ },
+ {
+  "id": "call-002",
+  "madeOn": "2026-07-28",
+  "madeAt": "2026-07-28T13:29:21",
+  "kind": "artist",
+  "subject": "Noise Not War",
+  "subjectNorm": "noise not war",
+  "claim": "Gets a Miami booking announced",
+  "rationale": "71.5 demand, 6 hard techno tracks, no Miami show on record",
+  "horizonDays": 120,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "display": "Noise Not War",
+   "demandScore": 71.54,
+   "bookingsAtCall": 0,
+   "gapScore": 71.54,
+   "lastPlayedAtCall": null,
+   "chartingTracks": 6,
+   "genres": "hard-techno",
+   "bestChartRank": {
+    "chart": "hard-techno",
+    "rank": 10
+   },
+   "snapshotDate": "2026-07-28"
+  }
+ },
+ {
+  "id": "call-003",
+  "madeOn": "2026-07-28",
+  "madeAt": "2026-07-28T13:29:21",
+  "kind": "genre",
+  "subject": "melodic-house-techno",
+  "subjectNorm": "melodic-house-techno",
+  "claim": "A Miami promoter launches a dedicated melodic house/techno night",
+  "rationale": "16% of Beatport demand vs 2.2% of Miami supply — biggest genre gap",
+  "horizonDays": 180,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "bucket": "melodic-house-techno",
+   "demandSharePct": 18.7,
+   "snapshotDate": "2026-07-28"
+  }
+ }
+]

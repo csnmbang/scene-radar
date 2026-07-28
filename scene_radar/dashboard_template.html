@@ -112,6 +112,9 @@
   }
   .pill.zero { background: rgba(57,135,229,0.15); color: #7ab2f0; }
   .pill.some { background: var(--surface-2); color: var(--ink-2); }
+  .pill.hit { background: rgba(12,163,12,0.18); color: #4fbf95; }
+  .pill.miss { background: rgba(208,59,59,0.16); color: #e08585; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
   .badge { font-size: 10.5px; padding: 2px 7px; border-radius: 5px; font-weight: 600; letter-spacing: .04em; }
   .badge.dice { background: rgba(213,81,129,0.16); color: #e08bad; }
   .badge.ra { background: rgba(25,158,112,0.16); color: #4fbf95; }
@@ -187,7 +190,7 @@ const BUCKET_COLOR = {
 const LABEL_BY_KEY = Object.fromEntries(DATA.genreKeys.map((k, i) => [k, DATA.genreLabels[i]]));
 const KEY_BY_LABEL = Object.fromEntries(DATA.genreKeys.map((k, i) => [DATA.genreLabels[i], k]));
 
-const TABS = ["Gaps", "Genres", "Venues", "Supply", "Timeline"];
+const TABS = ["Gaps", "Genres", "Venues", "Supply", "Timeline", "Track record"];
 const nav = document.getElementById("nav");
 const main = document.getElementById("main");
 document.getElementById("snapshot").textContent =
@@ -512,7 +515,74 @@ timelineSection.querySelector("#tl-demand").addEventListener("input", (e) => {
   timelineSection.querySelector("#tl-demand-v").textContent = e.target.value; renderTimeline();
 });
 
-renderGaps(); renderVenues(); renderEvents(); renderTimeline();
+/* ---------------- Track record ---------------- */
+const SB = DATA.scoreboard;
+const STATUS_PILL = {
+  open: `<span class="pill some">open</span>`,
+  hit: `<span class="pill hit">HIT</span>`,
+  miss: `<span class="pill miss">miss</span>`,
+  void: `<span class="pill some">void</span>`,
+};
+function evidenceLine(c) {
+  const e = c.evidence || {};
+  if (c.kind === "artist" && e.demandScore != null) {
+    const bits = [`demand ${e.demandScore}`, `${e.chartingTracks} charting tracks`,
+      `${e.bookingsAtCall} Miami booking${e.bookingsAtCall === 1 ? "" : "s"}`];
+    if (e.bestChartRank) bits.push(`best #${e.bestChartRank.rank} ${esc(LABEL_BY_KEY[e.bestChartRank.chart] || e.bestChartRank.chart)}`);
+    if (e.lastPlayedAtCall) bits.push(`last played ${e.lastPlayedAtCall}`);
+    else bits.push("no Miami show on record");
+    return bits.join(" · ");
+  }
+  if (c.kind === "genre" && e.demandSharePct != null) return `${e.demandSharePct}% of total demand at call time`;
+  return e.snapshotDate ? `snapshot ${e.snapshotDate}` : "";
+}
+const trackSection = el(`<section>
+  <div class="stats">
+    <div class="stat"><div class="v hot">${SB.hitRate != null ? SB.hitRate + "%" : "—"}</div><div class="k">hit rate${SB.resolved ? ` (${SB.hits}/${SB.resolved} resolved)` : " — nothing resolved yet"}</div></div>
+    <div class="stat"><div class="v">${SB.medianLead ?? "—"}</div><div class="k">median lead (days)</div></div>
+    <div class="stat"><div class="v">${SB.bestLead ?? "—"}</div><div class="k">best lead (days)</div></div>
+    <div class="stat"><div class="v">${SB.open}</div><div class="k">calls still open</div></div>
+    <div class="stat"><div class="v">${DATA.receipts.trackingDays}</div><div class="k">days of daily snapshots</div></div>
+  </div>
+  <div class="card">
+    <h2>Calls on the record</h2>
+    <div class="sub">Each call was logged <em>before</em> its outcome, with the metrics frozen as they stood that day. <code>calls.json</code> is committed to git, so every entry carries a commit timestamp that can't be back-dated — that's what makes this evidence rather than a story. Artist calls resolve themselves when a Miami booking appears; misses are recorded too.</div>
+    <div class="controls">
+      <select id="tc-status">
+        <option value="">All calls</option><option value="open">Open</option>
+        <option value="hit">Hits</option><option value="miss">Misses</option>
+      </select>
+      <span style="margin-left:auto;color:var(--muted);font-size:12px" id="tc-count"></span>
+    </div>
+    <div class="table-wrap"><table id="tc-table">
+      <thead><tr><th data-k="madeOn" class="sorted">Logged</th><th data-k="subject">Subject</th><th>Call</th>
+        <th>Evidence at the time</th><th data-k="status">Status</th><th data-k="leadSort">Lead</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    ${!DATA.calls.length ? `<div class="sub" style="margin-top:14px">No calls logged yet. Add one:<br>
+      <code style="color:var(--ink-2)">uv run python log_call.py "Vlace" "Will get a Miami booking" --why "72 demand, never played Miami"</code></div>` : ""}
+  </div>
+</section>`);
+main.appendChild(trackSection);
+const tcRows = () => {
+  const st = trackSection.querySelector("#tc-status").value;
+  return DATA.calls.filter(c => !st || c.status === st)
+    .map(c => ({...c, leadSort: c.leadDays ?? -1}));
+};
+const renderTrack = sortable(trackSection.querySelector("#tc-table"), tcRows, rows => {
+  trackSection.querySelector("#tc-count").textContent = `${rows.length} call${rows.length === 1 ? "" : "s"}`;
+  trackSection.querySelector("#tc-table tbody").innerHTML = rows.map(c => `<tr>
+    <td class="num" style="white-space:nowrap">${c.madeOn}</td>
+    <td style="font-weight:550">${esc(c.subject)}<div style="color:var(--muted);font-size:11px">${c.kind}</div></td>
+    <td>${esc(c.claim)}${c.rationale ? `<div style="color:var(--muted);font-size:11.5px;margin-top:2px">${esc(c.rationale)}</div>` : ""}</td>
+    <td style="color:var(--ink-2);font-size:12px;max-width:280px">${evidenceLine(c)}</td>
+    <td>${STATUS_PILL[c.status]}${c.resolution ? `<div style="color:var(--muted);font-size:11px;margin-top:3px">${esc(c.resolution)}</div>` : ""}</td>
+    <td class="num">${c.leadDays != null ? c.leadDays + "d" : "—"}</td>
+  </tr>`).join("");
+}, ["madeOn", -1]);
+trackSection.querySelector("#tc-status").addEventListener("input", renderTrack);
+
+renderGaps(); renderVenues(); renderEvents(); renderTimeline(); renderTrack();
 selectTab(0);
 </script>
 </body>

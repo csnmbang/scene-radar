@@ -57,10 +57,41 @@ with a MANUAL badge, and are auto-deduped once the event shows up on RA/Dice.
 | `data/` | `scene_radar.duckdb` + raw response cache per day (gitignored) |
 | `tests/` | Parsing tests against saved real fixtures — break = source changed |
 
-Dashboard views: **Gaps** (the product — filterable artist gap table),
-**Genres** (demand share vs supply share), **Venues** (who books what),
-**Supply** (raw event feed with RA/DICE source badges), **Timeline** (entered
-radar date vs booked date, with lead days).
+Dashboard views: **Gaps** (the product — filterable artist gap table, hover a
+row for the tracks behind the score), **Genres** (demand share vs supply
+share), **Venues** (who books what), **Supply** (raw event feed with
+RA/DICE/MANUAL badges), **Timeline** (entered radar vs booked, with lead
+days), **Track record** (calls logged before their outcomes).
+
+## Building a track record
+
+Two independent kinds of evidence, deliberately kept separate:
+
+**Timeline** is mechanical and unbiased — every tracked artist, no
+cherry-picking. It answers "across all 743 artists on the radar, how many
+got booked, and how far ahead did we see it?" No survivorship bias, because
+nothing is hand-selected.
+
+**Track record** is the calls you make explicitly, before the outcome:
+
+```bash
+uv run python log_call.py "Vlace" "Gets a Miami booking announced" \
+    --why "72 demand, 6 hard techno tracks, no Miami show on record"
+uv run python log_call.py --list                       # ledger + hit rate
+uv run python log_call.py --resolve call-003 hit --note "Melodic night launched at X"
+```
+
+Each call freezes the metrics as they stood that day (demand, bookings,
+best chart rank, last played) into `calls.json`, which is committed to git —
+so every entry carries a GitHub commit timestamp that can't be back-dated.
+Artist calls resolve themselves when a Miami booking appears; genre and
+venue calls resolve by hand.
+
+Three rules keep the number meaningful: a call on an artist who **already**
+has a booking is refused outright (nothing left to predict), a booking on or
+before the call date never counts as a hit, and calls that expire unresolved
+are recorded as **misses** rather than quietly dropped. `tests/test_calls.py`
+locks all of that in.
 
 ## How scoring works (tune in `scene_radar/config.py`)
 
