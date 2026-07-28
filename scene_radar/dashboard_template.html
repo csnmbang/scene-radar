@@ -22,6 +22,12 @@
     --s5: #d55181; /* house */
     --s6: #008300; /* melodic h&t */
     --s7: #9085e9; /* progressive house */
+    --s8: #e66767; /* afro house */
+    /* The validated categorical palette is 8 hues. Indie Dance is the 9th
+       genre, so per the palette rules it folds to a neutral rather than
+       getting an invented hue — safe here because every genre dot sits
+       directly beside its own label, so colour never carries identity alone. */
+    --s9: #898781;
     color-scheme: dark;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -186,6 +192,8 @@ const BUCKET_COLOR = {
   "house": "var(--s5)",
   "melodic-house-techno": "var(--s6)",
   "progressive-house": "var(--s7)",
+  "afro-house": "var(--s8)",
+  "indie-dance": "var(--s9)",
 };
 const LABEL_BY_KEY = Object.fromEntries(DATA.genreKeys.map((k, i) => [k, DATA.genreLabels[i]]));
 const KEY_BY_LABEL = Object.fromEntries(DATA.genreKeys.map((k, i) => [DATA.genreLabels[i], k]));

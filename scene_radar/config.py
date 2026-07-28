@@ -18,6 +18,8 @@ BEATPORT_GENRES = {
     "house": 5,
     "melodic-house-techno": 90,
     "progressive-house": 15,
+    "afro-house": 89,
+    "indie-dance": 37,
 }
 
 # Human-readable labels for charts/genre buckets.
@@ -29,6 +31,8 @@ GENRE_LABELS = {
     "house": "House",
     "melodic-house-techno": "Melodic H&T",
     "progressive-house": "Progressive House",
+    "afro-house": "Afro House",
+    "indie-dance": "Indie Dance",
 }
 
 # Seconds to sleep between outbound requests (politeness).
@@ -52,6 +56,17 @@ DICE_VENUES = {
     "sable-miami-l8qmp": "Sable Miami",
     "m2-miami-ya3v": "M2 Miami",
 }
+
+# Promoter pages on dice.fm. Same card markup as venue pages, but each card
+# names its own venue (a promoter moves between rooms), so these catch
+# events at venues we don't track directly — La Otra, MAD LIVE, Boho.
+DICE_PROMOTERS = {
+    "pitch-park-9n6d": "Pitch Park",
+    "apex-presents-pkd6k": "Apex Presents",
+}
+
+# Promoter pages list events nationally; keep only this city.
+DICE_CITY = "Miami"
 
 # --- Matching ---------------------------------------------------------------
 # rapidfuzz score (0-100) required to accept a fuzzy artist-name match.
@@ -92,10 +107,20 @@ RA_GENRE_TO_BUCKET = {
     "microhouse": "minimal-deep-tech",
     "house": "house",
     "deep house": "house",
-    "afro house": "house",
     "soulful house": "house",
     "funky house": "house",
-    "disco": "house",
+    # Afro house was previously folded into 'house', which made Miami's
+    # afro-house bookings read as generic house oversupply.
+    "afro house": "afro-house",
+    "amapiano": "afro-house",
+    "afro tech": "afro-house",
+    "afrobeat": "afro-house",
+    "indie dance": "indie-dance",
+    "nu disco": "indie-dance",
+    "nu disco / indie dance": "indie-dance",
+    "disco": "indie-dance",
+    "new wave": "indie-dance",
+    "electronica": "indie-dance",
     "melodic house & techno": "melodic-house-techno",
     "melodic techno": "melodic-house-techno",
     "melodic house": "melodic-house-techno",

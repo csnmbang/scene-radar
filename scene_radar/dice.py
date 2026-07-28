@@ -20,7 +20,14 @@ from pathlib import Path
 from curl_cffi import requests as cffi_requests
 from selectolax.parser import HTMLParser
 
-from .config import DICE_VENUES, RA_LOOKAHEAD_DAYS, RAW_DIR, REQUEST_DELAY_S
+from .config import (
+    DICE_CITY,
+    DICE_PROMOTERS,
+    DICE_VENUES,
+    RA_LOOKAHEAD_DAYS,
+    RAW_DIR,
+    REQUEST_DELAY_S,
+)
 from .normalize import norm_artist
 from .ra import RAEvent
 
@@ -71,25 +78,38 @@ def artists_from_title(title: str) -> list[str]:
     return out
 
 
-def fetch_venue_html(slug: str, cache_dir: Path, force: bool = False) -> str:
+def fetch_page(slug: str, kind: str, cache_dir: Path, force: bool = False) -> str:
+    """kind is 'venue' or 'promoters' — the two dice.fm listing page types."""
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / f"dice_{slug}.html"
+    cache_file = cache_dir / f"dice_{kind}_{slug}.html"
     if cache_file.exists() and not force:
         return cache_file.read_text()
-    resp = cffi_requests.get(f"https://dice.fm/venue/{slug}", impersonate="chrome", timeout=30)
+    resp = cffi_requests.get(f"https://dice.fm/{kind}/{slug}", impersonate="chrome", timeout=30)
     if resp.status_code != 200:
-        raise DiceParseError(f"dice.fm returned HTTP {resp.status_code} for venue {slug}")
+        raise DiceParseError(f"dice.fm returned HTTP {resp.status_code} for {kind}/{slug}")
     cache_file.write_text(resp.text)
     time.sleep(REQUEST_DELAY_S)
     return resp.text
 
 
-def parse_venue_page(html: str, venue_name: str, today: date | None = None) -> list[RAEvent]:
+def parse_listing_page(
+    html: str,
+    label: str,
+    venue_name: str | None = None,
+    today: date | None = None,
+) -> list[RAEvent]:
+    """Parse a Dice venue or promoter listing.
+
+    Venue pages: every card is that venue, so venue_name is passed in.
+    Promoter pages: a promoter moves between rooms, so each card names its
+    own venue (the text right before the city) — pass venue_name=None and
+    only Miami cards are kept.
+    """
     tree = HTMLParser(html)
     blocks = tree.css('div[class*="EventParts__EventBlock"]')
     if not blocks:
         raise DiceParseError(
-            f"{venue_name}: no event cards found — page structure changed, refusing to guess"
+            f"{label}: no event cards found — page structure changed, refusing to guess"
         )
     events: list[RAEvent] = []
     seen: set[str] = set()
@@ -111,6 +131,18 @@ def parse_venue_page(html: str, venue_name: str, today: date | None = None) -> l
         ev_date = next((d for d in (parse_event_date(t, today) for t in texts[1:]) if d), None)
         if ev_date is None or ev_date > horizon:
             continue
+
+        card_venue = venue_name
+        if card_venue is None:
+            # ['Title', 'Fri, Sep 6', 'La Otra', 'Miami', 'From $19.99']
+            try:
+                city_idx = next(i for i, t in enumerate(texts) if t == DICE_CITY)
+            except StopIteration:
+                continue  # not a Miami date on this promoter's national listing
+            if city_idx == 0:
+                continue
+            card_venue = texts[city_idx - 1]
+
         price = next((t for t in texts if t.startswith("$") or t.lower().startswith("from")), None)
         seen.add(eid)
         events.append(
@@ -118,7 +150,7 @@ def parse_venue_page(html: str, venue_name: str, today: date | None = None) -> l
                 event_id=eid,
                 event_date=ev_date,
                 event_name=title,
-                venue_name=venue_name,
+                venue_name=card_venue,
                 ticket_price=price,
                 genres=[],  # Dice cards carry no genre tags
                 artists=[] if title.lower() == "tba" else artists_from_title(title),
@@ -128,15 +160,35 @@ def parse_venue_page(html: str, venue_name: str, today: date | None = None) -> l
     return events
 
 
+# Back-compat alias — venue pages were the original entry point.
+def parse_venue_page(html: str, venue_name: str, today: date | None = None) -> list[RAEvent]:
+    return parse_listing_page(html, venue_name, venue_name=venue_name, today=today)
+
+
 def collect(snapshot_date: date | None = None, force: bool = False) -> list[RAEvent]:
     snapshot_date = snapshot_date or date.today()
     cache_dir = RAW_DIR / snapshot_date.isoformat()
     all_events: list[RAEvent] = []
+    seen: set[str] = set()  # a promoter's show at a tracked venue appears twice
+
     for slug, name in DICE_VENUES.items():
-        html = fetch_venue_html(slug, cache_dir, force=force)
-        events = parse_venue_page(html, name)
+        html = fetch_page(slug, "venue", cache_dir, force=force)
+        events = parse_listing_page(html, name, venue_name=name)
         print(f"  {name}: {len(events)} events")
-        all_events.extend(events)
+        for e in events:
+            if e.event_id not in seen:
+                seen.add(e.event_id)
+                all_events.append(e)
+
+    for slug, name in DICE_PROMOTERS.items():
+        html = fetch_page(slug, "promoters", cache_dir, force=force)
+        events = parse_listing_page(html, name, venue_name=None)
+        new = [e for e in events if e.event_id not in seen]
+        print(f"  {name} (promoter): {len(events)} Miami events, {len(new)} new")
+        for e in new:
+            seen.add(e.event_id)
+            all_events.append(e)
+
     return all_events
 
 

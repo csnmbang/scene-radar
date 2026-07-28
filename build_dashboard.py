@@ -90,8 +90,13 @@ def build_payload() -> dict:
         supply_mass = {b: 0.0 for b in GENRE_LABELS}
         unmapped = 0
         inferred = 0
+        # Upcoming events only: demand is "what's hot now", so supply has to be
+        # "what's booked ahead". The 12-month lookback exists for the
+        # last-played signal, not to dilute the forward-looking genre gap.
         for eid, gstr in con.execute(
-            "SELECT event_id, genres FROM ra_events WHERE snapshot_date = ?", [ra_snap]
+            """SELECT event_id, genres FROM ra_events
+               WHERE snapshot_date = ? AND event_date >= current_date""",
+            [ra_snap],
         ).fetchall():
             tags = [t.strip().lower() for t in (gstr or "").split(",") if t.strip()]
             buckets = {RA_GENRE_TO_BUCKET[t] for t in tags if t in RA_GENRE_TO_BUCKET}
