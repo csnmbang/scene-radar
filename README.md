@@ -1,9 +1,21 @@
 # 📡 Scene Radar — Miami
 
-Personal competitive-intelligence dashboard for electronic music: what's
-trending on Beatport (demand) vs. who's actually booked in Miami (supply,
-from Resident Advisor **plus** the Dice-only rooms — Club Space, Sable, M2).
-**Gap = artists blowing up with no local dates.**
+**Live: [radar.xtremedigits.com](https://radar.xtremedigits.com)** · rebuilt daily by
+[GitHub Actions](.github/workflows/daily-radar.yml)
+
+Competitive-intelligence dashboard for electronic music: what's trending on
+Beatport (demand) vs. who's actually booked in Miami (supply, from Resident
+Advisor **plus** the Dice-only rooms — Club Space, Sable, M2 — plus manual
+adds from venue Instagram announcements).
+**Gap = artists blowing up with no local dates.** The Timeline tab keeps
+receipts: when the radar flagged an artist vs. when a Miami booking appeared.
+
+```
+Beatport Top 100 (7 charts) ─┐
+RA Miami (GraphQL)           ├─ DuckDB snapshots ─ demand scores ─ fuzzy join ─ gaps
+Dice venue pages             │        │
+manual_events.json/Supabase ─┘        └─ static dashboard → GitHub Pages (daily cron)
+```
 
 ## Setup (5 steps)
 
@@ -16,9 +28,20 @@ from Resident Advisor **plus** the Dice-only rooms — Club Space, Sable, M2).
 5. Tests: `uv run pytest`
 
 Re-running `run_all.py` on the same day reuses the on-disk cache and replaces
-that day's snapshot (never duplicates). A launchd agent
-(`com.carmensannicolas.scene-radar`, 9:00 AM daily) refreshes automatically;
-momentum scoring diffs against the previous snapshot.
+that day's snapshot (never duplicates). The GitHub Actions workflow runs the
+whole pipeline daily at 9:05 AM Miami time, commits the DuckDB snapshot, and
+deploys the dashboard to Pages; momentum scoring diffs against the previous
+snapshot.
+
+**Adding events manually** (e.g. a venue announced its season on Instagram):
+
+```bash
+uv run python add_events.py screenshot.png     # Claude vision parses the lineup
+```
+
+or pass structured JSON with `--json`. Events land in `manual_events.json`
+(and Supabase if configured — see `.env.example`), get merged into supply
+with a MANUAL badge, and are auto-deduped once the event shows up on RA/Dice.
 
 ## What's inside
 
