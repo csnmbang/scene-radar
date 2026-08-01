@@ -75,6 +75,19 @@ CREATE TABLE IF NOT EXISTS gaps (
     genres VARCHAR
 );
 
+-- Confirmed dates in comparable markets (NYC, LA, Mexico City...). The
+-- long-horizon signal: these are frequently public months before Miami's
+-- own announcement for the same tour.
+CREATE TABLE IF NOT EXISTS market_bookings (
+    snapshot_date DATE NOT NULL,
+    collected_at TIMESTAMP NOT NULL,
+    artist_raw VARCHAR NOT NULL,
+    artist_norm VARCHAR NOT NULL,
+    market VARCHAR NOT NULL,
+    event_date DATE NOT NULL,
+    venue_name VARCHAR
+);
+
 -- columns added after first release (no-ops when already present)
 ALTER TABLE gaps ADD COLUMN IF NOT EXISTS last_played DATE;
 """

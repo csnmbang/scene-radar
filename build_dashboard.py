@@ -41,6 +41,34 @@ def build_payload() -> dict:
 
         today = datetime.now().date()
 
+        # Confirmed dates in comparable markets — the long-horizon signal.
+        # Kept out of gap_score deliberately: it's shown as its own column so
+        # the score stays a pure demand-vs-local-supply measure and this can
+        # be judged on its own before being weighted into anything.
+        mkt_snap = con.execute("SELECT max(snapshot_date) FROM market_bookings").fetchone()[0]
+        touring: dict[str, dict] = {}
+        if mkt_snap:
+            for norm, market, first_date, n in con.execute(
+                """SELECT artist_norm, market, min(event_date), count(*)
+                   FROM market_bookings WHERE snapshot_date = ?
+                   GROUP BY artist_norm, market""",
+                [mkt_snap],
+            ).fetchall():
+                t = touring.setdefault(norm, {"markets": [], "soonest": None, "dates": 0})
+                t["markets"].append(market)
+                t["dates"] += n
+                if t["soonest"] is None or first_date < t["soonest"]:
+                    t["soonest"] = first_date
+
+        # Beatport and RA spell artists differently; reuse the same match map
+        # the gap join uses so routing lines up with bookings.
+        bp_to_ra = dict(
+            con.execute(
+                "SELECT bp_artist_norm, ra_artist_norm FROM artist_matches WHERE snapshot_date = ?",
+                [snap],
+            ).fetchall()
+        )
+
         # Per-artist charting tracks — the "why is this artist here" hover.
         track_detail: dict[str, list[dict]] = {}
         for norm, rank, title, mix, label, chart in con.execute(
@@ -53,12 +81,23 @@ def build_payload() -> dict:
                 {"rank": rank, "title": title, "mix": mix, "label": label, "chart": chart}
             )
 
+        def _touring(norm: str) -> dict:
+            t = touring.get(norm) or touring.get(bp_to_ra.get(norm, ""), None)
+            if not t:
+                return {"markets": [], "soonest": None, "daysOut": None}
+            return {
+                "markets": sorted(t["markets"]),
+                "soonest": t["soonest"].isoformat() if t["soonest"] else None,
+                "daysOut": (t["soonest"] - today).days if t["soonest"] else None,
+            }
+
         gaps = [
             {"norm": r[9], "artist": r[0], "demand": r[1], "bookings": r[2], "gap": r[3],
              "genres": [g.strip() for g in (r[4] or "").split(",") if g.strip()],
              "tracks": r[5], "velocity": r[6], "new": r[7],
              "lastPlayed": (today - r[8]).days if r[8] else None,
-             "trackList": track_detail.get(r[9], [])[:8]}
+             "trackList": track_detail.get(r[9], [])[:8],
+             "touring": _touring(r[9])}
             for r in con.execute(
                 """SELECT g.artist_display, g.demand_score, g.miami_bookings_90d, g.gap_score,
                           g.genres, s.charting_tracks, s.rank_velocity, s.new_entries,

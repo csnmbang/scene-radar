@@ -9,7 +9,7 @@ import traceback
 
 from dotenv import load_dotenv
 
-from scene_radar import beatport, calls, dice, manual, ra
+from scene_radar import beatport, calls, dice, manual, markets, ra
 from scene_radar.db import connect
 from scene_radar.scoring import compute_gaps, compute_scores
 
@@ -18,7 +18,7 @@ def main() -> int:
     load_dotenv()
     force = "--force" in sys.argv
 
-    print("[1/6] Beatport charts")
+    print("[1/7] Beatport charts")
     try:
         bp_entries = beatport.collect(force=force)
     except Exception:
@@ -26,7 +26,7 @@ def main() -> int:
         print("Beatport collection FAILED — nothing written.")
         return 1
 
-    print("[2/6] RA Miami events")
+    print("[2/7] RA Miami events")
     try:
         ra_events = ra.collect(force=force)
     except Exception:
@@ -34,7 +34,7 @@ def main() -> int:
         print("RA collection FAILED — nothing written.")
         return 1
 
-    print("[3/6] Dice venues (Club Space / Sable / M2)")
+    print("[3/7] Dice venues (Club Space / Sable / M2)")
     try:
         dice_events = dice.collect(force=force)
     except Exception:
@@ -42,7 +42,15 @@ def main() -> int:
         print("Dice collection FAILED — nothing written.")
         return 1
 
-    print("[4/6] Manual events")
+    print("[4/7] Comparable markets (NYC / LA / MX / …)")
+    try:
+        market_rows = markets.collect(force=force)
+    except Exception:
+        traceback.print_exc()
+        print("Comparable-market collection FAILED — nothing written.")
+        return 1
+
+    print("[5/7] Manual events")
     manual_events = manual.collect()
 
     con = connect()
@@ -51,9 +59,11 @@ def main() -> int:
         n_ra = ra.write_snapshot(con, ra_events)
         n_dice = dice.write_snapshot(con, dice_events)
         n_manual = manual.write_snapshot(con, manual_events)
-        print(f"  wrote {n_bp} chart rows, {n_ra} RA + {n_dice} Dice + {n_manual} manual events")
+        n_mkt = markets.write_snapshot(con, market_rows)
+        print(f"  wrote {n_bp} chart rows, {n_ra} RA + {n_dice} Dice + {n_manual} manual events, "
+              f"{n_mkt} comparable-market rows")
 
-        print("[5/6] Scores + gaps")
+        print("[6/7] Scores + gaps")
         snap = compute_scores(con)
         n_gaps = compute_gaps(con)
         print(f"  snapshot {snap}: {n_gaps} artists scored")
@@ -65,7 +75,7 @@ def main() -> int:
     finally:
         con.close()
 
-    print("[6/6] Dashboard")
+    print("[7/7] Dashboard")
     import build_dashboard
 
     build_dashboard.main()

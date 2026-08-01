@@ -49,6 +49,25 @@ RA_PAGE_SIZE = 50
 # Apify actor to try first when APIFY_TOKEN is set. Override via env RA_APIFY_ACTOR.
 RA_APIFY_ACTOR_DEFAULT = "lhotanova~resident-advisor-scraper"
 
+# --- Comparable markets (the long-horizon signal) ---------------------------
+# A Miami booking is decided months before it's announced, so watching Miami
+# alone can never see far ahead. Other cities announce the same tour on
+# different schedules — an artist with confirmed LA/NYC dates and nothing in
+# Miami is either about to be announced here or is actively skipping us.
+# Both are worth knowing months in advance. RA area ids.
+COMPARABLE_MARKETS = {
+    "New York": 8,
+    "Los Angeles": 23,
+    "Mexico City": 399,
+    "Tulum": 523,
+    "Chicago": 17,
+    "Las Vegas": 527,
+}
+# Look further ahead than Miami supply: the whole point is catching tours
+# announced well beyond our local 90-day window.
+MARKETS_LOOKAHEAD_DAYS = 180
+MARKETS_MAX_PAGES = 12  # politeness ceiling per market per day
+
 # --- Dice (supply for venues that left RA) ----------------------------------
 # Venue slug on dice.fm -> display name. These rooms ticket on Dice, not RA.
 DICE_VENUES = {

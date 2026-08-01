@@ -269,6 +269,7 @@ const gapsSection = el(`<section>
         <option value="1" selected>≤ 1 booking</option>
         <option value="99">any bookings</option>
       </select>
+      <label style="gap:6px"><input type="checkbox" id="gap-touring"> touring elsewhere only</label>
       <span id="gap-chips"></span>
       <span style="margin-left:auto;color:var(--muted);font-size:12px" id="gap-count"></span>
     </div>
@@ -276,6 +277,7 @@ const gapsSection = el(`<section>
       <thead><tr>
         <th data-k="artist">Artist</th><th data-k="demand">Demand</th><th data-k="bookings">Bookings 90d</th>
         <th data-k="lastPlayedSort">Last played</th>
+        <th data-k="touringSort">Touring elsewhere</th>
         <th data-k="gap" class="sorted">Gap score</th><th data-k="tracks">Tracks</th><th>Charting on</th>
       </tr></thead><tbody></tbody>
     </table></div>
@@ -295,12 +297,22 @@ const gapRows = () => {
   const q = gapsSection.querySelector("#gap-search").value.toLowerCase();
   const minD = +gapsSection.querySelector("#gap-demand").value;
   const maxB = +gapsSection.querySelector("#gap-book").value;
+  const touringOnly = gapsSection.querySelector("#gap-touring").checked;
   return DATA.gaps.filter(g =>
     g.demand >= minD && g.bookings <= maxB &&
+    (!touringOnly || (g.touring?.markets?.length ?? 0) > 0) &&
     (!q || g.artist.toLowerCase().includes(q)) &&
     (!activeBuckets.size || g.genres.some(x => activeBuckets.has(x))))
-    .map(g => ({...g, lastPlayedSort: g.lastPlayed ?? 9999}));
+    .map(g => ({...g, lastPlayedSort: g.lastPlayed ?? 9999,
+                touringSort: (g.touring?.markets?.length ?? 0)}));
 };
+const MARKET_ABBR = {"New York":"NYC","Los Angeles":"LA","Mexico City":"MX","Las Vegas":"LV","Chicago":"CHI","Tulum":"TUL"};
+function fmtTouring(t) {
+  if (!t || !t.markets.length) return `<span style="color:var(--muted)">—</span>`;
+  const label = t.markets.map(m => MARKET_ABBR[m] || m).join(" · ");
+  const when = t.daysOut != null ? ` — first date in ${t.daysOut}d` : "";
+  return `<span class="pill zero" title="Confirmed dates in ${t.markets.join(", ")}${when}. Routed nearby but not booked in Miami.">${label}</span>`;
+}
 // "never" would be a lie — we only see RA history back DATA.lookbackDays.
 const LOOKBACK_LABEL = DATA.lookbackDays >= 360 ? "12mo"
   : DATA.lookbackDays >= 180 ? "6mo" : `${Math.round(DATA.lookbackDays / 30)}mo`;
@@ -345,6 +357,7 @@ const renderGaps = sortable(gapsSection.querySelector("#gap-table"), gapRows, (r
     <td>${scorebar(g.demand)}</td>
     <td class="num"><span class="pill ${g.bookings === 0 ? "zero" : "some"}">${g.bookings === 0 ? "OPEN" : g.bookings}</span></td>
     <td class="num" style="white-space:nowrap">${fmtAgo(g.lastPlayed)}</td>
+    <td style="white-space:nowrap">${fmtTouring(g.touring)}</td>
     <td>${scorebar(g.gap)}</td>
     <td class="num">${g.tracks}</td>
     <td>${genreTags(g.genres)}</td>
@@ -357,7 +370,7 @@ const renderGaps = sortable(gapsSection.querySelector("#gap-table"), gapRows, (r
     tr.addEventListener("mouseleave", hideTip);
   });
 }, ["gap", -1]);
-["gap-search", "gap-book"].forEach(id => gapsSection.querySelector("#" + id).addEventListener("input", renderGaps));
+["gap-search", "gap-book", "gap-touring"].forEach(id => gapsSection.querySelector("#" + id).addEventListener("input", renderGaps));
 gapsSection.querySelector("#gap-demand").addEventListener("input", (e) => {
   gapsSection.querySelector("#gap-demand-v").textContent = e.target.value; renderGaps();
 });
