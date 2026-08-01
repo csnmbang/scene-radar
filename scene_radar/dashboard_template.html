@@ -467,16 +467,28 @@ const renderEvents = sortable(supplySection.querySelector("#ev-table"), evRows, 
 
 /* ---------------- Timeline ---------------- */
 const R = DATA.receipts;
+const QUALITY_WHY = {
+  backfill: "The venue or promoter entered the dataset that day, bringing its existing calendar with it — not a prediction.",
+  warmup: "Logged while the tracked artist set was still being established.",
+  ingestion: `Under ${R.minCredibleLead} days: measures how fast we noticed an already-public announcement.`,
+  genuine: "Venue already tracked and the booking appeared well after the flag.",
+};
 const timelineSection = el(`<section>
   <div class="stats">
-    <div class="stat"><div class="v hot">${R.called}</div><div class="k">artists flagged before Miami booked them</div></div>
+    <div class="stat"><div class="v hot">${R.called}</div><div class="k">genuine early flags (lead ≥ ${R.minCredibleLead}d)</div></div>
     <div class="stat"><div class="v">${R.medianLead ?? "—"}</div><div class="k">median lead time (days)</div></div>
+    <div class="stat"><div class="v" style="color:var(--muted)">${R.discounted}</div><div class="k">discounted — ingestion lag, not foresight</div></div>
     <div class="stat"><div class="v">${R.conversion30d != null ? R.conversion30d + "%" : "—"}</div><div class="k">hot gaps booked within 30d${R.conversion30d == null ? " (needs 30d of history)" : ""}</div></div>
     <div class="stat"><div class="v">${R.trackingDays}</div><div class="k">days of snapshots</div></div>
   </div>
   <div class="card">
     <h2>Radar timeline</h2>
-    <div class="sub">When an artist first showed up on the radar vs. when a Miami date first appeared for them. Lead = days you knew before the booking surfaced. Receipts accumulate as daily snapshots stack up.</div>
+    <div class="sub">When an artist first showed up on the radar vs. when a Miami date first appeared for them.
+      A positive lead only counts as foresight if it clears ${R.minCredibleLead} days <em>and</em> the venue was already
+      being tracked — otherwise it's measuring how fast we ingest an announcement that was already public.
+      Discounted rows are labelled: <span class="pill some">backfill</span> a venue/promoter joined that day and brought its
+      calendar, <span class="pill some">warm-up</span> logged while the artist set was still being established,
+      <span class="pill some">ingestion</span> under ${R.minCredibleLead} days. Real receipts accumulate only as clean days stack up.</div>
     <div class="controls">
       <input type="search" id="tl-search" placeholder="Search artist…">
       <select id="tl-status">
@@ -514,7 +526,13 @@ const renderTimeline = sortable(timelineSection.querySelector("#tl-table"), tlRo
     <td>${scorebar(t.demand)}</td>
     <td class="num" style="white-space:nowrap">${t.entered ?? "—"}</td>
     <td class="num" style="white-space:nowrap">${t.booked ? `<span class="pill zero">${t.booked}</span>` : `<span class="pill some">open</span>`}</td>
-    <td class="num">${t.lead >= 0 ? t.lead : "—"}</td>
+    <td class="num">${t.lead >= 0
+      ? (t.quality === "genuine"
+          ? `<span class="pill hit">${t.lead}d</span>`
+          : t.quality
+            ? `<span title="${QUALITY_WHY[t.quality]}" style="color:var(--muted)">${t.lead}d <span class="pill some">${t.quality}</span></span>`
+            : t.lead)
+      : "—"}</td>
     <td style="color:var(--ink-2)">${esc(t.where || "—")}</td>
   </tr>`).join("");
 }, ["booked", -1]);

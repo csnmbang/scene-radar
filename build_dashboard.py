@@ -25,6 +25,11 @@ from scene_radar.db import connect
 
 OUT = PROJECT_ROOT / "dashboard.html"
 
+# A booking discovered less than a week after an artist starts charting tells
+# you how fast we ingest a public announcement, not that we saw it coming.
+# Only leads at or above this count as foresight.
+MIN_CREDIBLE_LEAD_DAYS = 7
+
 
 def build_payload() -> dict:
     con = connect(read_only=True)
@@ -173,6 +178,17 @@ def build_payload() -> dict:
             "SELECT artist_norm, min(snapshot_date) FROM gaps WHERE miami_bookings_90d > 0 GROUP BY artist_norm"
         ).fetchall())
 
+        # When did each venue first enter the dataset? Adding a venue or a
+        # promoter backfills its whole calendar, which looks like a burst of
+        # "predictions" but is really just ingestion. Those are excluded below.
+        venue_first_seen = dict(
+            con.execute(
+                """SELECT venue_name, min(snapshot_date) FROM ra_events
+                   WHERE venue_name IS NOT NULL GROUP BY 1"""
+            ).fetchall()
+        )
+        tracking_start = min(entered.values()) if entered else snap
+
         timeline = []
         for norm, display, demand in con.execute(
             "SELECT artist_norm, artist_display, demand_score FROM gaps WHERE snapshot_date = ?",
@@ -181,32 +197,61 @@ def build_payload() -> dict:
             ent = entered.get(norm)
             bkd = first_booked.get(norm)
             where = ""
+            booked_venues: list[str] = []
             if bkd is not None:
                 ra_norm = con.execute(
                     "SELECT ra_artist_norm FROM artist_matches WHERE snapshot_date = ? AND bp_artist_norm = ?",
                     [bkd, norm]).fetchone()
                 if ra_norm:
-                    where = " · ".join(
-                        f"{v or 'TBA'} ({d.strftime('%b %d')})"
-                        for d, v in con.execute(
-                            """SELECT DISTINCT e.event_date, e.venue_name
-                               FROM ra_events e JOIN ra_event_artists a
-                                 ON a.event_id = e.event_id AND a.snapshot_date = e.snapshot_date
-                               WHERE e.snapshot_date = ? AND a.artist_norm = ?
-                                 AND e.event_date >= ?
-                               ORDER BY e.event_date""",
-                            [bkd, ra_norm[0], bkd]).fetchall())
+                    hits = con.execute(
+                        """SELECT DISTINCT e.event_date, e.venue_name
+                           FROM ra_events e JOIN ra_event_artists a
+                             ON a.event_id = e.event_id AND a.snapshot_date = e.snapshot_date
+                           WHERE e.snapshot_date = ? AND a.artist_norm = ?
+                             AND e.event_date >= ?
+                           ORDER BY e.event_date""",
+                        [bkd, ra_norm[0], bkd]).fetchall()
+                    where = " · ".join(f"{v or 'TBA'} ({d.strftime('%b %d')})" for d, v in hits)
+                    booked_venues = [v for _, v in hits if v]
+            lead = (bkd - ent).days if (bkd and ent) else None
+
+            # Why a lead may not be real foresight:
+            #   backfill  — the venue joined the dataset that same day, so its
+            #               whole existing calendar arrived at once
+            #   warm-up   — discovered while the artist set itself was still
+            #               being established (first days of tracking)
+            #   ingestion — under a week: dominated by how fast we notice an
+            #               already-public announcement, not by predicting it
+            quality = None
+            if lead is not None and lead > 0:
+                venue_is_new = any(
+                    venue_first_seen.get(v) is not None and venue_first_seen[v] >= bkd
+                    for v in booked_venues
+                )
+                if venue_is_new:
+                    quality = "backfill"
+                elif (ent - tracking_start).days < 1:
+                    quality = "warmup"
+                elif lead < MIN_CREDIBLE_LEAD_DAYS:
+                    quality = "ingestion"
+                else:
+                    quality = "genuine"
+
             timeline.append({
                 "artist": display, "demand": demand,
                 "entered": ent.isoformat() if ent else None,
                 "booked": bkd.isoformat() if bkd else None,
-                "lead": (bkd - ent).days if (bkd and ent) else None,
+                "lead": lead,
+                "quality": quality,
                 "where": where,
             })
         timeline.sort(key=lambda r: (r["booked"] or "", r["demand"]), reverse=True)
 
-        # Receipts: did the radar see artists before Miami booked them?
-        called = [t for t in timeline if t["lead"] is not None and t["lead"] > 0]
+        # Receipts. Only 'genuine' leads count toward the headline — an
+        # earlier version counted every positive lead, which turned source
+        # additions and matching lag into fake foresight.
+        called = [t for t in timeline if t["quality"] == "genuine"]
+        discounted = [t for t in timeline if t["quality"] in ("backfill", "warmup", "ingestion")]
         median_lead = None
         if called:
             leads = sorted(t["lead"] for t in called)
@@ -234,9 +279,11 @@ def build_payload() -> dict:
             conversion = round(100 * cohort[1] / cohort[0], 1)
         receipts = {
             "called": len(called),
+            "discounted": len(discounted),
             "medianLead": median_lead,
             "conversion30d": conversion,
             "trackingDays": (snap - min(entered.values())).days + 1 if entered else 1,
+            "minCredibleLead": MIN_CREDIBLE_LEAD_DAYS,
         }
 
         n_events_ra = sum(1 for e in events if e["source"] != "dice")
