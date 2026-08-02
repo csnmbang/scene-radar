@@ -106,3 +106,22 @@ def test_scoreboard_is_empty_not_perfect_when_nothing_resolved():
     calls_mod.save([_call(0, 0, status="open")])
     s = calls_mod.scoreboard(calls_mod.load())
     assert s["hitRate"] is None  # not 100%
+
+
+def test_notes_never_expire_into_misses():
+    calls_mod.save([_call(made_days_ago=999, bookings_at_call=0, kind="note")])
+    assert calls_mod.auto_resolve(FakeCon({})) == []
+    assert calls_mod.load()[0]["status"] == "open"
+
+
+def test_notes_and_voids_are_excluded_from_the_hit_rate():
+    calls_mod.save([
+        _call(0, 0, id="call-001", status="hit", leadDays=20),
+        _call(0, 0, id="call-002", status="miss"),
+        _call(0, 0, id="call-003", status="void"),   # broken premise
+        _call(0, 0, id="call-004", kind="note"),      # an observation
+    ])
+    s = calls_mod.scoreboard(calls_mod.load())
+    assert (s["total"], s["hits"], s["resolved"]) == (2, 1, 2)
+    assert s["hitRate"] == 50.0
+    assert (s["notes"], s["voided"]) == (1, 1)

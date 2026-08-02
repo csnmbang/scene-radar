@@ -22,6 +22,7 @@ from selectolax.parser import HTMLParser
 
 from .config import (
     DICE_CITY,
+    DICE_PROMOTER_GENRES,
     DICE_PROMOTERS,
     DICE_VENUES,
     RA_LOOKAHEAD_DAYS,
@@ -97,6 +98,7 @@ def parse_listing_page(
     label: str,
     venue_name: str | None = None,
     today: date | None = None,
+    genres: list[str] | None = None,
 ) -> list[RAEvent]:
     """Parse a Dice venue or promoter listing.
 
@@ -152,7 +154,9 @@ def parse_listing_page(
                 event_name=title,
                 venue_name=card_venue,
                 ticket_price=price,
-                genres=[],  # Dice cards carry no genre tags
+                # Dice cards carry no genre tags; promoters with consistent
+                # programming supply them (see DICE_PROMOTER_GENRES).
+                genres=list(genres or []),
                 artists=[] if title.lower() == "tba" else artists_from_title(title),
                 source="dice",
             )
@@ -182,7 +186,9 @@ def collect(snapshot_date: date | None = None, force: bool = False) -> list[RAEv
 
     for slug, name in DICE_PROMOTERS.items():
         html = fetch_page(slug, "promoters", cache_dir, force=force)
-        events = parse_listing_page(html, name, venue_name=None)
+        events = parse_listing_page(
+            html, name, venue_name=None, genres=DICE_PROMOTER_GENRES.get(slug)
+        )
         new = [e for e in events if e.event_id not in seen]
         print(f"  {name} (promoter): {len(events)} Miami events, {len(new)} new")
         for e in new:

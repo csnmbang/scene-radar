@@ -102,6 +102,7 @@ def add(
     rationale: str = "",
     horizon_days: int = DEFAULT_HORIZON_DAYS,
     subject_norm: str | None = None,
+    source_url: str = "",
 ) -> dict:
     if kind not in KINDS:
         raise ValueError(f"kind must be one of {KINDS}")
@@ -144,6 +145,7 @@ def add(
         "subjectNorm": subject_norm,
         "claim": claim,
         "rationale": rationale,
+        "sourceUrl": source_url,
         "horizonDays": horizon_days,
         "status": "open",
         "resolvedOn": None,
@@ -179,6 +181,8 @@ def auto_resolve(con) -> list[dict]:
     for c in calls:
         if c["status"] != "open":
             continue
+        if c["kind"] == "note":
+            continue  # an observation isn't a prediction; it can't hit or miss
         made = date.fromisoformat(c["madeOn"])
 
         if c["kind"] == "artist":
@@ -224,13 +228,21 @@ def resolve_manual(call_id: str, status: str, note: str) -> dict:
 
 
 def scoreboard(calls: list[dict]) -> dict:
-    """Hit rate and lead times — the numbers that go on the resume."""
-    resolved = [c for c in calls if c["status"] in ("hit", "miss")]
+    """Hit rate and lead times — the numbers that go on the resume.
+
+    Notes and voided calls are excluded: a note makes no prediction, and a
+    voided call had a broken premise. Neither should move a hit rate in
+    either direction.
+    """
+    predictions = [c for c in calls if c["kind"] != "note" and c["status"] != "void"]
+    resolved = [c for c in predictions if c["status"] in ("hit", "miss")]
     hits = [c for c in resolved if c["status"] == "hit"]
     leads = sorted(c["leadDays"] for c in hits if c["leadDays"] is not None)
-    open_calls = [c for c in calls if c["status"] == "open"]
+    open_calls = [c for c in predictions if c["status"] == "open"]
     return {
-        "total": len(calls),
+        "total": len(predictions),
+        "notes": sum(1 for c in calls if c["kind"] == "note"),
+        "voided": sum(1 for c in calls if c["status"] == "void"),
         "open": len(open_calls),
         "hits": len(hits),
         "resolved": len(resolved),

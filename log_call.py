@@ -51,6 +51,7 @@ def main() -> None:
     p.add_argument("claim", nargs="?", help="What you're predicting")
     p.add_argument("--kind", default="artist", choices=calls_mod.KINDS)
     p.add_argument("--why", default="", help="Rationale — the reasoning behind the call")
+    p.add_argument("--source", default="", help="External evidence URL (announcement post, article)")
     p.add_argument("--horizon", type=int, default=calls_mod.DEFAULT_HORIZON_DAYS,
                    help="Days before an unresolved call counts as a miss")
     p.add_argument("--list", action="store_true", help="Show all calls and the scoreboard")
@@ -77,7 +78,8 @@ def main() -> None:
     con = connect()
     try:
         c = calls_mod.add(con, args.kind, args.subject, args.claim,
-                          rationale=args.why, horizon_days=args.horizon)
+                          rationale=args.why, horizon_days=args.horizon,
+                          source_url=args.source)
     finally:
         con.close()
 
@@ -87,7 +89,10 @@ def main() -> None:
         print(f"  Evidence frozen: demand {e['demandScore']}, {e['chartingTracks']} tracks, "
               f"{e['bookingsAtCall']} bookings at call time"
               + (f", best rank #{e['bestChartRank']['rank']}" if e.get("bestChartRank") else ""))
-    print(f"  Resolves automatically, or counts as a miss after {c['horizonDays']} days.")
+    if c["kind"] == "note":
+        print("  Recorded as an observation — notes never count toward the hit rate.")
+    else:
+        print(f"  Resolves automatically, or counts as a miss after {c['horizonDays']} days.")
     print("  Commit calls.json to timestamp it: git add calls.json && git commit")
 
 

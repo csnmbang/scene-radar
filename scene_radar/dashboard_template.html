@@ -581,6 +581,7 @@ const trackSection = el(`<section>
     <div class="stat"><div class="v">${SB.medianLead ?? "—"}</div><div class="k">median lead (days)</div></div>
     <div class="stat"><div class="v">${SB.bestLead ?? "—"}</div><div class="k">best lead (days)</div></div>
     <div class="stat"><div class="v">${SB.open}</div><div class="k">calls still open</div></div>
+    <div class="stat"><div class="v" style="color:var(--muted)">${SB.notes + SB.voided}</div><div class="k">notes &amp; voided — excluded from hit rate</div></div>
     <div class="stat"><div class="v">${DATA.receipts.trackingDays}</div><div class="k">days of daily snapshots</div></div>
   </div>
   <div class="card">
@@ -613,7 +614,7 @@ const renderTrack = sortable(trackSection.querySelector("#tc-table"), tcRows, ro
   trackSection.querySelector("#tc-table tbody").innerHTML = rows.map(c => `<tr>
     <td class="num" style="white-space:nowrap">${c.madeOn}</td>
     <td style="font-weight:550">${esc(c.subject)}<div style="color:var(--muted);font-size:11px">${c.kind}</div></td>
-    <td>${esc(c.claim)}${c.rationale ? `<div style="color:var(--muted);font-size:11.5px;margin-top:2px">${esc(c.rationale)}</div>` : ""}</td>
+    <td>${esc(c.claim)}${c.rationale ? `<div style="color:var(--muted);font-size:11.5px;margin-top:2px">${esc(c.rationale)}</div>` : ""}${c.sourceUrl ? `<div style="font-size:11.5px;margin-top:3px"><a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">source ↗</a></div>` : ""}</td>
     <td style="color:var(--ink-2);font-size:12px;max-width:280px">${evidenceLine(c)}</td>
     <td>${STATUS_PILL[c.status]}${c.resolution ? `<div style="color:var(--muted);font-size:11px;margin-top:3px">${esc(c.resolution)}</div>` : ""}</td>
     <td class="num">${c.leadDays != null ? c.leadDays + "d" : "—"}</td>

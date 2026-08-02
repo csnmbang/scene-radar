@@ -67,14 +67,33 @@
   "claim": "A Miami promoter launches a dedicated melodic house/techno night",
   "rationale": "16% of Beatport demand vs 2.2% of Miami supply — biggest genre gap",
   "horizonDays": 180,
-  "status": "open",
-  "resolvedOn": null,
-  "resolution": null,
+  "status": "void",
+  "resolvedOn": "2026-08-01",
+  "resolution": "Premise was wrong: Pitch Park and Apex Presents already run weekly melodic/progressive nights. Their events carried no genre tags, so they weren't counted as melodic supply — fixed via DICE_PROMOTER_GENRES.",
   "leadDays": null,
   "evidence": {
    "bucket": "melodic-house-techno",
    "demandSharePct": 18.7,
    "snapshotDate": "2026-07-28"
+  }
+ },
+ {
+  "id": "call-004",
+  "madeOn": "2026-08-01",
+  "madeAt": "2026-08-01T19:19:23",
+  "kind": "note",
+  "subject": "Prospa @ Club Space Sep 5",
+  "subjectNorm": "prospa @ club space sep 5",
+  "claim": "Retrospective: radar ranked Prospa #1 of 517 with zero Miami bookings on 2026-07-27; Space announced that night",
+  "rationale": "Evidence is the committed 07-27 snapshot itself, not this note. Announcement post is same-day, so true lead is hours, not a long-horizon call.",
+  "sourceUrl": "https://www.instagram.com/p/DbVz-k1zyIP/",
+  "horizonDays": 120,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "snapshotDate": "2026-08-01"
   }
  }
 ]

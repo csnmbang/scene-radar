@@ -84,6 +84,16 @@ DICE_PROMOTERS = {
     "apex-presents-pkd6k": "Apex Presents",
 }
 
+# Dice cards carry no genre tags, so a promoter running a weekly melodic /
+# progressive night contributed ZERO to that genre's supply — which
+# overstated the melodic gap. These promoters have known, consistent
+# programming, so their events are tagged accordingly. Tags must be strings
+# that RA_GENRE_TO_BUCKET already understands.
+DICE_PROMOTER_GENRES = {
+    "pitch-park-9n6d": ["melodic house", "progressive house"],
+    "apex-presents-pkd6k": ["melodic house", "progressive house"],
+}
+
 # Promoter pages list events nationally; keep only this city.
 DICE_CITY = "Miami"
 
