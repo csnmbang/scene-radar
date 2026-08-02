@@ -30,6 +30,7 @@ from datetime import date, datetime
 import duckdb
 
 from .config import (
+    ARTIST_ALIASES,
     RECENCY_WINDOW_DAYS,
     W_CHART_POINTS,
     W_NEW_ENTRY,
@@ -184,9 +185,13 @@ def compute_gaps(con: duckdb.DuckDBPyConnection) -> int:
     replace_snapshot(con, "gaps", latest)
     rows = []
     for artist_norm, display, demand, genres in scores:
-        ra_key = match_map.get(artist_norm, "")
-        bookings = booking_counts.get(ra_key, 0)
-        lp = last_played.get(ra_key)
+        # A collective's bookings live under its members' names, so check
+        # every alias as well as the matched name.
+        keys = {match_map.get(artist_norm, "")} | set(ARTIST_ALIASES.get(artist_norm, []))
+        keys.discard("")
+        bookings = sum(booking_counts.get(k, 0) for k in keys)
+        played = [last_played[k] for k in keys if last_played.get(k)]
+        lp = max(played) if played else None
         recency = min(1.0, (today - lp).days / RECENCY_WINDOW_DAYS) if lp else 1.0
         gap = round(demand * (1.0 / (1.0 + bookings)) * recency, 2)
         rows.append((now, latest, artist_norm, display, demand, bookings, gap, genres, lp))

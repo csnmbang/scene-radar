@@ -325,6 +325,77 @@ def build_payload() -> dict:
             "minCredibleLead": MIN_CREDIBLE_LEAD_DAYS,
         }
 
+        # ---- The lineup: every upcoming Miami event, ranked by how hot its
+        # artists are right now. Built only from things we directly observe —
+        # a scraped listing and today's Beatport rank. No genre tags, no
+        # booking history, no inference.
+        demand_by_bp = dict(
+            con.execute(
+                "SELECT artist_norm, demand_score FROM artist_scores WHERE snapshot_date = ?",
+                [snap],
+            ).fetchall()
+        )
+        display_by_bp = dict(
+            con.execute(
+                "SELECT artist_norm, artist_display FROM artist_scores WHERE snapshot_date = ?",
+                [snap],
+            ).fetchall()
+        )
+        best_chart: dict[str, tuple] = {}
+        for norm, chart, rank in con.execute(
+            """SELECT artist_norm, chart_genre, min(rank) FROM beatport_chart_entries
+               WHERE snapshot_date = ? GROUP BY artist_norm, chart_genre""",
+            [snap],
+        ).fetchall():
+            if norm not in best_chart or rank < best_chart[norm][1]:
+                best_chart[norm] = (chart, rank)
+        ra_to_bp_all = dict(
+            con.execute(
+                """SELECT ra_artist_norm, bp_artist_norm FROM artist_matches
+                   WHERE snapshot_date = ?""",
+                [snap],
+            ).fetchall()
+        )
+
+        lineup = []
+        for eid, ev_date, name, venue, price, source in con.execute(
+            """SELECT event_id, event_date, event_name, venue_name, ticket_price, source
+               FROM ra_events WHERE snapshot_date = ? AND event_date >= current_date
+               ORDER BY event_date""",
+            [ra_snap],
+        ).fetchall():
+            acts = []
+            for (raw, rnorm) in con.execute(
+                """SELECT artist_raw, artist_norm FROM ra_event_artists
+                   WHERE event_id = ? AND snapshot_date = ?""",
+                [eid, ra_snap],
+            ).fetchall():
+                bp = ra_to_bp_all.get(rnorm, rnorm)
+                d = demand_by_bp.get(bp)
+                bc = best_chart.get(bp)
+                acts.append({
+                    "name": display_by_bp.get(bp, raw),
+                    "demand": round(d, 1) if d else None,
+                    "chart": GENRE_LABELS.get(bc[0], bc[0]) if bc else None,
+                    "rank": bc[1] if bc else None,
+                })
+            acts.sort(key=lambda a: a["demand"] or -1, reverse=True)
+            charting = [a for a in acts if a["demand"]]
+            disp_price, price_val = normalize_price(price)
+            lineup.append({
+                "date": ev_date.isoformat(),
+                "days": (ev_date - today).days,
+                "name": name,
+                "venue": venue or "TBA",
+                "price": disp_price,
+                "priceValue": price_val,
+                "source": source,
+                "heat": round(max((a["demand"] for a in charting), default=0), 1),
+                "chartingCount": len(charting),
+                "acts": acts[:8],
+            })
+        lineup.sort(key=lambda e: (-e["heat"], e["date"]))
+
         n_events_ra = sum(1 for e in events if e["source"] != "dice")
         n_events_dice = sum(1 for e in events if e["source"] == "dice")
         n_matched = con.execute(
@@ -361,6 +432,7 @@ def build_payload() -> dict:
             "gaps": gaps, "genres": genre_rows,
             "unmapped": unmapped, "inferred": inferred,
             "venues": venues, "events": events, "timeline": timeline,
+            "lineup": lineup,
             "receipts": receipts,
             "calls": calls_mod.load(),
             "scoreboard": calls_mod.scoreboard(calls_mod.load()),

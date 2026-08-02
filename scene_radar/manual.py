@@ -125,26 +125,44 @@ def collect() -> list[RAEvent]:
 
 
 def dedupe_against_db(con, events: list[RAEvent], snapshot_date: date) -> list[RAEvent]:
-    """Drop manual events that already exist as RA/Dice events in this
-    snapshot (same date, similar venue, similar title) — ticketing sources win."""
+    """Drop manual events that a ticketing source now lists too.
+
+    Title matching alone is unreliable here: a poster transcription carries
+    the whole bill ("Prospa + Jamback + Silvie Loto + Ms. Mada + …") while
+    Dice truncates it ("Prospa, Jamback & Silvie Loto"), and the length gap
+    drags fuzzy title scores under any sane threshold. A shared artist at the
+    same venue on the same night is the decisive signal — two different shows
+    don't share a DJ in one room on one evening. Title similarity stays as a
+    fallback for bills with no parsed lineup.
+    """
     existing = con.execute(
-        """SELECT event_date, coalesce(venue_name, ''), event_name FROM ra_events
-           WHERE snapshot_date = ? AND source != 'manual'""",
+        """SELECT e.event_date, coalesce(e.venue_name, ''), e.event_name,
+                  coalesce(string_agg(a.artist_norm, '|'), '')
+           FROM ra_events e
+           LEFT JOIN ra_event_artists a
+             ON a.event_id = e.event_id AND a.snapshot_date = e.snapshot_date
+           WHERE e.snapshot_date = ? AND e.source != 'manual'
+           GROUP BY 1, 2, 3""",
         [snapshot_date],
     ).fetchall()
-    by_date: dict[date, list[tuple[str, str]]] = {}
-    for d, venue, name in existing:
-        by_date.setdefault(d, []).append((venue.lower(), name.lower()))
+    by_date: dict[date, list[tuple[str, str, set]]] = {}
+    for d, venue, name, artists in existing:
+        by_date.setdefault(d, []).append(
+            (venue.lower(), name.lower(), {a for a in artists.split("|") if a})
+        )
 
     kept = []
     for e in events:
-        dupe = any(
-            fuzz.token_sort_ratio((e.venue_name or "").lower(), venue) >= _VENUE_MATCH
-            and fuzz.token_sort_ratio(e.event_name.lower(), name) >= _TITLE_MATCH
-            for venue, name in by_date.get(e.event_date, [])
-        )
+        mine = {norm_artist(a) for a in e.artists if norm_artist(a)}
+        dupe = False
+        for venue, name, theirs in by_date.get(e.event_date, []):
+            if fuzz.token_sort_ratio((e.venue_name or "").lower(), venue) < _VENUE_MATCH:
+                continue
+            if (mine & theirs) or fuzz.token_set_ratio(e.event_name.lower(), name) >= _TITLE_MATCH:
+                dupe = True
+                break
         if dupe:
-            print(f"  manual event now on a ticketing source, skipping: {e.event_name} ({e.event_date})")
+            print(f"  already on a ticketing source, skipping: {e.event_name[:44]} ({e.event_date})")
         else:
             kept.append(e)
     return kept

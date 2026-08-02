@@ -4,17 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scene Radar — Miami</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --page: #0b0b0d;
-    --surface: #111113;
-    --surface-2: #17171a;
-    --ink: #f5f5f4;
-    --ink-2: #c3c2b7;
-    --muted: #898781;
-    --grid: #2c2c2a;
-    --border: rgba(255,255,255,0.08);
-    --accent: #3987e5;
+    /* Ink-black ground with a rose-tinted grey family: body text is pale
+       rose, white is reserved for the one thing that matters on screen. */
+    --page: #01011b;
+    --surface: #0f0f15;
+    --surface-2: #14141c;
+    --ink: #F5C0C0;
+    --ink-2: #e3b2b3;
+    --muted: #99797d;
+    --grid: #312a31;
+    --border: rgba(245,192,192,0.13);
+    --accent: #F5C0C0;
+    --loud: #ffffff;
     --s1: #3987e5; /* tech house */
     --s2: #d95926; /* techno peak */
     --s3: #199e70; /* hard techno */
@@ -33,15 +39,19 @@
   * { box-sizing: border-box; margin: 0; }
   body {
     background: var(--page); color: var(--ink);
-    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 15px/1.55 "IBM Plex Sans", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+  }
+  .mono, td.num, .stat .v, thead th {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
   }
   a { color: var(--accent); text-decoration: none; }
 
   header {
     position: sticky; top: 0; z-index: 10;
     display: flex; align-items: center; gap: 24px;
-    padding: 14px 28px; background: rgba(11,11,13,0.85);
+    padding: 14px 28px; background: rgba(1,1,27,0.88);
     backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
   }
   .brand { font-weight: 700; letter-spacing: 0.06em; font-size: 14px; }
@@ -94,7 +104,7 @@
     display: inline-flex; align-items: center; gap: 6px; transition: all .15s;
   }
   .chip .swatch { width: 8px; height: 8px; border-radius: 50%; }
-  .chip.on { background: var(--surface-2); color: var(--ink); border-color: rgba(255,255,255,0.2); }
+  .chip.on { background: var(--surface-2); color: var(--ink); border-color: rgba(245,192,192,0.28); }
 
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   thead th {
@@ -103,8 +113,8 @@
     border-bottom: 1px solid var(--grid); cursor: pointer; user-select: none; white-space: nowrap;
   }
   thead th.sorted { color: var(--ink); }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
-  tbody tr:hover { background: rgba(255,255,255,0.025); }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid rgba(245,192,192,0.06); vertical-align: middle; }
+  tbody tr:hover { background: rgba(245,192,192,0.03); }
   td.num { font-variant-numeric: tabular-nums; text-align: right; }
   .table-wrap { overflow-x: auto; }
 
@@ -116,15 +126,18 @@
   .pill {
     display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 550;
   }
-  .pill.zero { background: rgba(57,135,229,0.15); color: #7ab2f0; }
-  .pill.some { background: var(--surface-2); color: var(--ink-2); }
-  .pill.hit { background: rgba(12,163,12,0.18); color: #4fbf95; }
-  .pill.miss { background: rgba(208,59,59,0.16); color: #e08585; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  .badge { font-size: 10.5px; padding: 2px 7px; border-radius: 5px; font-weight: 600; letter-spacing: .04em; }
-  .badge.dice { background: rgba(213,81,129,0.16); color: #e08bad; }
-  .badge.ra { background: rgba(25,158,112,0.16); color: #4fbf95; }
-  .badge.manual { background: rgba(144,133,233,0.16); color: #a99ff0; }
+  .pill.zero { background: rgba(245,192,192,0.14); color: var(--accent); }
+  .pill.some { background: var(--surface-2); color: var(--muted); }
+  .pill.hit { background: rgba(92,177,152,0.18); color: #5CB198; }
+  .pill.miss { background: rgba(164,119,178,0.18); color: #A477B2; }
+  code { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; }
+  .badge {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px; padding: 2px 6px; border-radius: 4px; letter-spacing: .06em;
+  }
+  .badge.dice { background: rgba(245,192,192,0.13); color: var(--accent); }
+  .badge.ra { background: rgba(153,121,125,0.20); color: var(--muted); }
+  .badge.manual { background: rgba(164,119,178,0.20); color: #A477B2; }
   .gtag { display: inline-flex; align-items: center; gap: 5px; margin-right: 8px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
   .gtag .swatch { width: 7px; height: 7px; border-radius: 50%; }
 
@@ -142,7 +155,28 @@
   .legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); }
   .legend .swatch { width: 9px; height: 9px; border-radius: 3px; }
 
-  .why { cursor: help; border-bottom: 1px dotted rgba(255,255,255,0.25); }
+  .stat .v.loud { color: var(--loud); }
+  .lu {
+    display: grid; grid-template-columns: 58px 1fr 190px 118px;
+    gap: 18px; align-items: center;
+    padding: 13px 0; border-bottom: 1px solid rgba(245,192,192,0.07);
+  }
+  .lu:hover { background: rgba(245,192,192,0.025); }
+  .lu-date { font-size: 14px; color: var(--loud); }
+  .lu-dow { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .lu-title { font-size: 14.5px; color: var(--loud); font-weight: 500; margin-bottom: 3px; }
+  .lu-acts { font-size: 12.5px; line-height: 1.5; }
+  .lu-meta { font-size: 12.5px; color: var(--ink-2); text-align: right; }
+  .lu-heat { display: flex; align-items: center; gap: 9px; }
+  .lu-bar { flex: 1; height: 3px; background: var(--grid); border-radius: 2px; overflow: hidden; }
+  .lu-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+  .lu-num { font-size: 12.5px; color: var(--ink); width: 34px; text-align: right; }
+  @media (max-width: 760px) {
+    .lu { grid-template-columns: 50px 1fr; }
+    .lu-meta, .lu-heat { grid-column: 2; text-align: left; }
+  }
+
+  .why { cursor: help; border-bottom: 1px dotted rgba(245,192,192,0.28); }
   #tip {
     position: fixed; z-index: 50; pointer-events: none; opacity: 0;
     transition: opacity .12s; max-width: 420px;
@@ -198,7 +232,7 @@ const BUCKET_COLOR = {
 const LABEL_BY_KEY = Object.fromEntries(DATA.genreKeys.map((k, i) => [k, DATA.genreLabels[i]]));
 const KEY_BY_LABEL = Object.fromEntries(DATA.genreKeys.map((k, i) => [DATA.genreLabels[i], k]));
 
-const TABS = ["Gaps", "Genres", "Venues", "Supply", "Timeline", "Track record"];
+const TABS = ["Lineup", "Gaps", "Genres", "Venues", "Supply", "Timeline", "Track record"];
 const nav = document.getElementById("nav");
 const main = document.getElementById("main");
 document.getElementById("snapshot").textContent =
@@ -248,6 +282,80 @@ function sortable(table, rows, renderRows, defaults) {
   }
   return render;
 }
+
+/* ---------------- Lineup — the daily product ---------------- */
+const L = DATA.lineup;
+const lineupSection = el(`<section>
+  <div class="stats">
+    <div class="stat"><div class="v loud">${L.length}</div><div class="k">upcoming Miami events, all sources</div></div>
+    <div class="stat"><div class="v">${DATA.stats.venues}</div><div class="k">venues</div></div>
+    <div class="stat"><div class="v">${L.filter(e => e.chartingCount).length}</div><div class="k">with a currently-charting artist</div></div>
+    <div class="stat"><div class="v">${DATA.stats.eventsDice}</div><div class="k">invisible on Resident Advisor</div></div>
+  </div>
+  <div class="card">
+    <h2>What's on, ranked by who's charting right now</h2>
+    <div class="sub">Every upcoming Miami event we can see — Resident Advisor, Dice venues, Dice promoters and announcements that only ran on Instagram — joined to today's Beatport positions. Ranked by the hottest artist on each bill. No genre inference and no booking history: every row is a listing we scraped and a chart rank from this morning.</div>
+    <div class="controls">
+      <input type="search" id="lu-search" placeholder="Search artist, event, venue…">
+      <select id="lu-window">
+        <option value="14">Next 2 weeks</option>
+        <option value="30" selected>Next 30 days</option>
+        <option value="90">Next 90 days</option>
+        <option value="9999">Everything</option>
+      </select>
+      <label><input type="checkbox" id="lu-charting" checked> only bills with a charting artist</label>
+      <select id="lu-sort">
+        <option value="heat">Sort by heat</option>
+        <option value="date">Sort by date</option>
+      </select>
+      <span style="margin-left:auto;color:var(--muted);font-size:12px" id="lu-count"></span>
+    </div>
+    <div id="lu-list"></div>
+  </div>
+</section>`);
+main.appendChild(lineupSection);
+
+function actLine(a) {
+  if (!a.demand) return `<span style="color:var(--muted)">${esc(a.name)}</span>`;
+  return `<span style="color:var(--ink)">${esc(a.name)}</span>` +
+    `<span class="mono" style="color:var(--muted);font-size:11.5px"> #${a.rank} ${esc(a.chart)}</span>`;
+}
+function renderLineup() {
+  const q = lineupSection.querySelector("#lu-search").value.toLowerCase();
+  const win = +lineupSection.querySelector("#lu-window").value;
+  const onlyCharting = lineupSection.querySelector("#lu-charting").checked;
+  const sortBy = lineupSection.querySelector("#lu-sort").value;
+  let rows = L.filter(e => e.days <= win
+    && (!onlyCharting || e.chartingCount > 0)
+    && (!q || e.name.toLowerCase().includes(q) || e.venue.toLowerCase().includes(q)
+        || e.acts.some(a => a.name.toLowerCase().includes(q))));
+  rows = [...rows].sort(sortBy === "date"
+    ? (a, b) => a.date.localeCompare(b.date) || b.heat - a.heat
+    : (a, b) => b.heat - a.heat || a.date.localeCompare(b.date));
+  lineupSection.querySelector("#lu-count").textContent = `${rows.length} events`;
+  const maxHeat = Math.max(...L.map(e => e.heat), 1);
+  lineupSection.querySelector("#lu-list").innerHTML = rows.slice(0, 120).map(e => `
+    <div class="lu">
+      <div class="lu-when">
+        <div class="lu-date mono">${new Date(e.date + "T12:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</div>
+        <div class="lu-dow mono">${new Date(e.date + "T12:00").toLocaleDateString(undefined,{weekday:"short"})}</div>
+      </div>
+      <div class="lu-body">
+        <div class="lu-title">${esc(e.name)}</div>
+        <div class="lu-acts">${e.acts.map(actLine).join(`<span style="color:var(--grid)"> · </span>`)}</div>
+      </div>
+      <div class="lu-meta">
+        <div>${esc(e.venue)}</div>
+        <div class="mono" style="color:var(--muted);font-size:11.5px">${esc(e.price)} · ${srcBadge(e.source)}</div>
+      </div>
+      <div class="lu-heat">
+        <div class="lu-bar"><div class="lu-fill" style="width:${Math.max(3, 100*e.heat/maxHeat)}%"></div></div>
+        <div class="mono lu-num">${e.heat || "—"}</div>
+      </div>
+    </div>`).join("") || `<div class="sub">Nothing matches that filter.</div>`;
+}
+["lu-search","lu-window","lu-charting","lu-sort"].forEach(id =>
+  lineupSection.querySelector("#" + id).addEventListener("input", renderLineup));
 
 /* ---------------- Gaps ---------------- */
 const gapsSection = el(`<section>
@@ -622,7 +730,7 @@ const renderTrack = sortable(trackSection.querySelector("#tc-table"), tcRows, ro
 }, ["madeOn", -1]);
 trackSection.querySelector("#tc-status").addEventListener("input", renderTrack);
 
-renderGaps(); renderVenues(); renderEvents(); renderTimeline(); renderTrack();
+renderLineup(); renderGaps(); renderVenues(); renderEvents(); renderTimeline(); renderTrack();
 selectTab(0);
 </script>
 </body>

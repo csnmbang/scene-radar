@@ -98,6 +98,19 @@ DICE_PROMOTER_GENRES = {
 DICE_CITY = "Miami"
 
 # --- Matching ---------------------------------------------------------------
+# Collectives and labels chart under one name but get booked as individuals,
+# so a literal string match reports them as unbooked. Keys and values are
+# normalized (see normalize.norm_artist): "&ME" normalizes to "and me".
+# Keinemusik was the case that exposed this — Rampa and Adam Port have both
+# played Miami while the collective read as having no local history.
+ARTIST_ALIASES = {
+    "keinemusik": ["and me", "rampa", "adam port"],
+    "innervisions": ["dixon", "ame", "and me"],
+    "adriatique": ["adrian shala", "adrian schweizer"],
+    "mind against": ["alessandro fognini", "federico fognini"],
+}
+
+# --- Matching (cont.) -------------------------------------------------------
 # rapidfuzz score (0-100) required to accept a fuzzy artist-name match.
 FUZZY_MATCH_THRESHOLD = 90
 
@@ -127,9 +140,11 @@ RA_GENRE_TO_BUCKET = {
     "acid": "techno-peak-time-driving",
     "hard techno": "hard-techno",
     "industrial techno": "hard-techno",
-    "industrial": "hard-techno",
-    "hardcore": "hard-techno",
     "hard dance": "hard-techno",
+    # NOT mapped: bare "industrial" and "hardcore". On RA those tag EBM,
+    # industrial rock and hardcore punk (Nitzer Ebb carries "industrial"),
+    # not hard techno. Four such events were enough to make Miami look like
+    # it led the genre. Sparse tags amplify noise — only map unambiguous ones.
     "minimal": "minimal-deep-tech",
     "minimal techno": "minimal-deep-tech",
     "deep tech": "minimal-deep-tech",
