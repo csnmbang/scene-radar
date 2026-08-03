@@ -58,6 +58,48 @@ _GQL_QUERY = """query($filters: FilterInputDtoInput, $page: Int, $pageSize: Int,
 }"""
 
 
+# A 12-month lookback is ~58 paginated requests, and comparable markets add
+# more on top. At that volume a transient 5xx from RA is a matter of when,
+# not if — one 502 on page 39 used to abort the whole daily run. Retry the
+# errors that are worth retrying; keep failing loudly on everything else.
+_RETRY_STATUS = {429, 500, 502, 503, 504}
+_RETRY_BACKOFF = (2, 5, 12)
+
+
+def post_graphql(body: dict, what: str, referer: str | None = None) -> dict:
+    """POST to ra.co/graphql, retrying transient failures with backoff."""
+    last = ""
+    for attempt in range(len(_RETRY_BACKOFF) + 1):
+        try:
+            resp = cffi_requests.post(
+                "https://ra.co/graphql",
+                json=body,
+                impersonate="chrome",
+                headers={
+                    "Content-Type": "application/json",
+                    **({"Referer": referer} if referer else {}),
+                },
+                timeout=40,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if "errors" in data:
+                    raise RACollectError(f"GraphQL errors on {what}: {data['errors']}")
+                return data
+            last = f"HTTP {resp.status_code}"
+            if resp.status_code not in _RETRY_STATUS:
+                raise RACollectError(f"ra.co/graphql returned {last} on {what}")
+        except RACollectError:
+            raise
+        except Exception as e:  # network/timeout — worth a retry
+            last = type(e).__name__
+        if attempt < len(_RETRY_BACKOFF):
+            wait = _RETRY_BACKOFF[attempt]
+            print(f"    {what}: {last}, retrying in {wait}s")
+            time.sleep(wait)
+    raise RACollectError(f"ra.co/graphql failed on {what} after retries ({last})")
+
+
 def _gql_page(page: int, start: date, end: date) -> dict:
     body = {
         "query": _GQL_QUERY,
@@ -71,19 +113,7 @@ def _gql_page(page: int, start: date, end: date) -> dict:
             "sort": {"listingDate": {"order": "ASCENDING"}},
         },
     }
-    resp = cffi_requests.post(
-        "https://ra.co/graphql",
-        json=body,
-        impersonate="chrome",
-        headers={"Content-Type": "application/json", "Referer": "https://ra.co/events/us/miami"},
-        timeout=30,
-    )
-    if resp.status_code != 200:
-        raise RACollectError(f"ra.co/graphql returned HTTP {resp.status_code} on page {page}")
-    data = resp.json()
-    if "errors" in data:
-        raise RACollectError(f"GraphQL errors on page {page}: {data['errors']}")
-    return data
+    return post_graphql(body, f"page {page}", referer="https://ra.co/events/us/miami")
 
 
 def fetch_graphql(cache_dir: Path, force: bool = False) -> list[dict]:

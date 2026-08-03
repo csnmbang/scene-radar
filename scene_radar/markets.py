@@ -60,18 +60,14 @@ def _page(area_id: int, page: int, start: date, end: date) -> dict:
             "sort": {"listingDate": {"order": "ASCENDING"}},
         },
     }
-    resp = cffi_requests.post(
-        "https://ra.co/graphql",
-        json=body,
-        impersonate="chrome",
-        headers={"Content-Type": "application/json"},
-        timeout=40,
-    )
-    if resp.status_code != 200:
-        raise MarketsCollectError(f"ra.co/graphql HTTP {resp.status_code} (area {area_id} p{page})")
-    data = resp.json()
-    if "errors" in data:
-        raise MarketsCollectError(f"GraphQL errors (area {area_id}): {data['errors']}")
+    # Shares RA's retry policy — six markets over 180 days is a lot of
+    # pagination, so transient 5xx are expected and must not kill the run.
+    from .ra import RACollectError, post_graphql
+
+    try:
+        data = post_graphql(body, f"area {area_id} p{page}")
+    except RACollectError as e:
+        raise MarketsCollectError(str(e)) from e
     return data["data"]["eventListings"]
 
 
