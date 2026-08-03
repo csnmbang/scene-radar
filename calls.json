@@ -95,5 +95,95 @@
   "evidence": {
    "snapshotDate": "2026-08-01"
   }
+ },
+ {
+  "id": "call-005",
+  "madeOn": "2026-08-03",
+  "madeAt": "2026-08-03T10:30:51",
+  "kind": "artist",
+  "subject": "Argy",
+  "subjectNorm": "argy",
+  "claim": "Gets a Miami date announced within 120 days",
+  "rationale": "Fastest riser on the board: rank velocity +34, 4 charting tracks, #15 melodic house & techno. Confirmed New York Aug 28, no Miami date. Last Miami show Mar 2026 (RA-visible only).",
+  "sourceUrl": "",
+  "horizonDays": 120,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "display": "Argy",
+   "demandScore": 32.55,
+   "bookingsAtCall": 0,
+   "gapScore": 32.55,
+   "lastPlayedAtCall": "2026-03-26",
+   "chartingTracks": 4,
+   "genres": "melodic-house-techno",
+   "bestChartRank": {
+    "chart": "melodic-house-techno",
+    "rank": 15
+   },
+   "snapshotDate": "2026-08-03"
+  }
+ },
+ {
+  "id": "call-006",
+  "madeOn": "2026-08-03",
+  "madeAt": "2026-08-03T10:30:51",
+  "kind": "artist",
+  "subject": "Durante",
+  "subjectNorm": "durante",
+  "claim": "Gets a Miami date announced within 120 days",
+  "rationale": "#4 progressive house, no RA-visible Miami show since Aug 2025 — longest absence of any high-demand artist with zero upcoming dates. Confirmed Los Angeles Aug 22. The non-obvious call: either a booking is overdue or Miami is genuinely skipping him.",
+  "sourceUrl": "",
+  "horizonDays": 120,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "display": "Durante",
+   "demandScore": 29.37,
+   "bookingsAtCall": 0,
+   "gapScore": 29.37,
+   "lastPlayedAtCall": "2025-08-23",
+   "chartingTracks": 4,
+   "genres": "progressive-house",
+   "bestChartRank": {
+    "chart": "progressive-house",
+    "rank": 4
+   },
+   "snapshotDate": "2026-08-03"
+  }
+ },
+ {
+  "id": "call-007",
+  "madeOn": "2026-08-03",
+  "madeAt": "2026-08-03T10:30:51",
+  "kind": "artist",
+  "subject": "KUKO",
+  "subjectNorm": "kuko",
+  "claim": "Gets a Miami date announced within 120 days",
+  "rationale": "#1 hard techno, routed through three comparable markets (New York, Mexico City, Chicago) from Sep 12 with Miami the hole in that routing. Last Miami May 2026.",
+  "sourceUrl": "",
+  "horizonDays": 120,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "display": "KUKO",
+   "demandScore": 33.56,
+   "bookingsAtCall": 0,
+   "gapScore": 29.46,
+   "lastPlayedAtCall": "2026-05-16",
+   "chartingTracks": 5,
+   "genres": "hard-techno",
+   "bestChartRank": {
+    "chart": "hard-techno",
+    "rank": 1
+   },
+   "snapshotDate": "2026-08-03"
+  }
  }
 ]
