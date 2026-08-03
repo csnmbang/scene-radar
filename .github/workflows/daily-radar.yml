@@ -2,7 +2,12 @@ name: daily-radar
 
 on:
   schedule:
-    - cron: "5 13 * * *" # 9:05 AM Miami (EDT); drifts to 8:05 in EST
+    # 11:37 UTC = 7:37 AM Miami (EDT). Deliberately early and on an odd
+    # minute: GitHub runs cron on a best-effort queue and the :00/:05 slots
+    # are heavily contended, so runs land late. Observed delay on the old
+    # "5 13 * * *" was 1.5-2.3h every day, pushing the refresh past 10am
+    # local. Starting ~90min early lands it in the morning even when queued.
+    - cron: "37 11 * * *"
   workflow_dispatch:
 
 permissions:
