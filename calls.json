@@ -185,5 +185,24 @@
    },
    "snapshotDate": "2026-08-03"
   }
+ },
+ {
+  "id": "call-008",
+  "madeOn": "2026-08-13",
+  "madeAt": "2026-08-13T13:31:21",
+  "kind": "note",
+  "subject": "Guy J @ Apex Presents (Sept?)",
+  "subjectNorm": "guy j @ apex presents (sept?)",
+  "claim": "Retrospective: Guy J has charted #2 progressive house on Beatport every day since tracking began (Jul 28), zero Miami bookings the whole time. Apex Presents announced him same-day, not yet listed on Dice as of this check.",
+  "rationale": "Evidence is the 14-day demand trail itself: demand never fell below 16.6, peaked 33.1, always #1-3 progressive house. Confirms the radar had him flagged well before any Miami listing existed — event details TBD, will add via add_events.py once confirmed.",
+  "sourceUrl": "",
+  "horizonDays": 120,
+  "status": "open",
+  "resolvedOn": null,
+  "resolution": null,
+  "leadDays": null,
+  "evidence": {
+   "snapshotDate": "2026-08-10"
+  }
  }
 ]
