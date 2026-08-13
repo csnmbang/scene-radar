@@ -48,5 +48,18 @@
    "Thunderpony",
    "Monoky"
   ]
+ },
+ {
+  "date": "2026-12-03",
+  "name": "Art Basel Miami: Guy J",
+  "venue": "La Otra Wynwood",
+  "artists": [
+   "Guy J",
+   "Nico Moon"
+  ],
+  "price": null,
+  "genres": [
+   "progressive house"
+  ]
  }
 ]

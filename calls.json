@@ -197,10 +197,10 @@
   "rationale": "Evidence is the 14-day demand trail itself: demand never fell below 16.6, peaked 33.1, always #1-3 progressive house. Confirms the radar had him flagged well before any Miami listing existed — event details TBD, will add via add_events.py once confirmed.",
   "sourceUrl": "",
   "horizonDays": 120,
-  "status": "open",
-  "resolvedOn": null,
-  "resolution": null,
-  "leadDays": null,
+  "status": "hit",
+  "resolvedOn": "2026-08-13",
+  "resolution": "Confirmed via Apex Presents flyer: Guy J + Nico Moon, La Otra Wynwood, Thu Dec 3 2026 (Art Basel Miami), presented by Apex Presents x Hall. Lead measured from first radar sighting (2026-07-28, #2 progressive house, demand 27.7) to this booking = 16 days. Not counted toward the genuine-lead stat: this is a manually-sourced Instagram find, not the automated Timeline pipeline — but it's the same underlying signal working.",
+  "leadDays": 0,
   "evidence": {
    "snapshotDate": "2026-08-10"
   }

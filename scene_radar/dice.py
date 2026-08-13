@@ -169,6 +169,25 @@ def parse_venue_page(html: str, venue_name: str, today: date | None = None) -> l
     return parse_listing_page(html, venue_name, venue_name=venue_name, today=today)
 
 
+def _fetch_and_parse(
+    slug: str, kind: str, label: str, cache_dir: Path, force: bool, **parse_kwargs
+) -> list[RAEvent]:
+    """Dice occasionally serves a real (non-bot-check) page with an empty
+    events section — not a markup change, just a bad render on their end.
+    A cached copy of that page raises on every subsequent run forever, so on
+    a zero-card result we force one live refetch before giving up. Fixes
+    itself in place rather than needing a human to notice and re-run."""
+    html = fetch_page(slug, kind, cache_dir, force=force)
+    try:
+        return parse_listing_page(html, label, **parse_kwargs)
+    except DiceParseError:
+        if force:
+            raise
+        print(f"  {label}: cached page had no events — refetching live")
+        html = fetch_page(slug, kind, cache_dir, force=True)
+        return parse_listing_page(html, label, **parse_kwargs)
+
+
 def collect(snapshot_date: date | None = None, force: bool = False) -> list[RAEvent]:
     snapshot_date = snapshot_date or date.today()
     cache_dir = RAW_DIR / snapshot_date.isoformat()
@@ -176,8 +195,7 @@ def collect(snapshot_date: date | None = None, force: bool = False) -> list[RAEv
     seen: set[str] = set()  # a promoter's show at a tracked venue appears twice
 
     for slug, name in DICE_VENUES.items():
-        html = fetch_page(slug, "venue", cache_dir, force=force)
-        events = parse_listing_page(html, name, venue_name=name)
+        events = _fetch_and_parse(slug, "venue", name, cache_dir, force, venue_name=name)
         print(f"  {name}: {len(events)} events")
         for e in events:
             if e.event_id not in seen:
@@ -185,9 +203,9 @@ def collect(snapshot_date: date | None = None, force: bool = False) -> list[RAEv
                 all_events.append(e)
 
     for slug, name in DICE_PROMOTERS.items():
-        html = fetch_page(slug, "promoters", cache_dir, force=force)
-        events = parse_listing_page(
-            html, name, venue_name=None, genres=DICE_PROMOTER_GENRES.get(slug)
+        events = _fetch_and_parse(
+            slug, "promoters", name, cache_dir, force,
+            venue_name=None, genres=DICE_PROMOTER_GENRES.get(slug),
         )
         new = [e for e in events if e.event_id not in seen]
         print(f"  {name} (promoter): {len(events)} Miami events, {len(new)} new")

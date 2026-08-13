@@ -7,6 +7,7 @@ import pytest
 
 from scene_radar.dice import (
     DiceParseError,
+    _fetch_and_parse,
     artists_from_title,
     parse_event_date,
     parse_listing_page,
@@ -33,6 +34,50 @@ def test_parse_venue_page():
 def test_fails_loudly_on_garbage():
     with pytest.raises(DiceParseError):
         parse_venue_page("<html><body>redesigned!</body></html>", "Sable Miami")
+
+
+def test_empty_cached_page_self_heals_on_refetch(tmp_path, monkeypatch):
+    """Regression: Dice can serve a real page with zero event cards (not a
+    bot-check, not a markup change — just a bad render). A cached copy of
+    that page used to raise on every run forever. One live refetch should
+    recover without the caller passing force=True."""
+    cache_dir = tmp_path
+    (cache_dir / "dice_venue_sable-miami-l8qmp.html").write_text(
+        "<html><body>no events today, sorry</body></html>"
+    )
+
+    calls = {"n": 0}
+    real_html = FIXTURE.read_text()
+
+    def fake_fetch_page(slug, kind, cache_dir_arg, force=False):
+        calls["n"] += 1
+        return real_html  # simulates a fresh, good fetch
+
+    monkeypatch.setattr("scene_radar.dice.fetch_page", fake_fetch_page)
+    events = _fetch_and_parse(
+        "sable-miami-l8qmp", "venue", "Sable Miami", cache_dir, False,
+        venue_name="Sable Miami", today=TODAY,
+    )
+    assert calls["n"] == 1  # only the retry fetch — the bad cache was never re-hit
+    assert events, "expected the retry to recover real events"
+
+
+def test_force_mode_does_not_retry_forever(tmp_path, monkeypatch):
+    """With force=True the caller already asked for a live fetch; a second
+    empty result should raise immediately (one fetch), not loop."""
+    calls = {"n": 0}
+
+    def fake_fetch_page(slug, kind, cache_dir_arg, force=False):
+        calls["n"] += 1
+        return "<html><body>still nothing</body></html>"
+
+    monkeypatch.setattr("scene_radar.dice.fetch_page", fake_fetch_page)
+    with pytest.raises(DiceParseError):
+        _fetch_and_parse(
+            "sable-miami-l8qmp", "venue", "Sable Miami", tmp_path, True,
+            venue_name="Sable Miami",
+        )
+    assert calls["n"] == 1
 
 
 def test_promoter_page_reads_venue_from_each_card():
