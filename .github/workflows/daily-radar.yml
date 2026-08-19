@@ -44,6 +44,11 @@ jobs:
           git config user.email "actions@github.com"
           git add data/scene_radar.duckdb manual_events.json
           git diff --cached --quiet || git commit -m "Daily snapshot $(date -u +%F)"
+          # Discard anything still dirty that wasn't part of that commit on
+          # purpose (a stray tracked file the run touched but this step never
+          # intended to persist) — otherwise a rebase run twice in one day can
+          # find the tree dirty and refuse to pull.
+          git checkout -- .
           git pull --rebase origin master
           git push origin master
 
