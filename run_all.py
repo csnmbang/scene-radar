@@ -56,12 +56,14 @@ def main() -> int:
     con = connect()
     try:
         n_bp = beatport.write_snapshot(con, bp_entries)
+        n_bp_saber = beatport.push_neon_chart_entries(bp_entries)
         n_ra = ra.write_snapshot(con, ra_events)
         n_dice = dice.write_snapshot(con, dice_events)
         n_manual = manual.write_snapshot(con, manual_events)
         n_mkt = markets.write_snapshot(con, market_rows)
         print(f"  wrote {n_bp} chart rows, {n_ra} RA + {n_dice} Dice + {n_manual} manual events, "
-              f"{n_mkt} comparable-market rows")
+              f"{n_mkt} comparable-market rows"
+              + (f" ({n_bp_saber} mirrored to Saber)" if n_bp_saber else ""))
 
         print("[6/7] Scores + gaps")
         snap = compute_scores(con)

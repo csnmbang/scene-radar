@@ -12,6 +12,7 @@ BeatportParseError and write nothing.
 """
 
 import json
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -150,3 +151,47 @@ def write_snapshot(con, entries: list[ChartEntry], snapshot_date: date | None = 
         ],
     )
     return len(entries)
+
+
+def saber_configured() -> bool:
+    return bool(os.environ.get("SABER_DATABASE_URL"))
+
+
+def push_neon_chart_entries(entries: list[ChartEntry], snapshot_date: date | None = None) -> int:
+    """Mirror today's chart entries into Saber's own Neon database, so
+    saber.me can score a DJ's set against what's charting right now.
+
+    No-op if SABER_DATABASE_URL isn't set — this pipeline's own DuckDB
+    snapshot is written either way, same as manual.py's Supabase push is
+    optional on top of the local file. Neon has no PostgREST layer the way
+    Supabase does, so this goes through psycopg directly rather than
+    reusing manual.py's REST-call pattern.
+
+    Same day, same shape as write_snapshot: delete today's rows, then
+    insert — a partial write from a failed run never sits half-applied
+    next to yesterday's data with nothing to tell them apart.
+    """
+    if not saber_configured():
+        return 0
+    snapshot_date = snapshot_date or date.today()
+    import psycopg
+
+    with psycopg.connect(os.environ["SABER_DATABASE_URL"]) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM beatport_chart_entries WHERE snapshot_date = %s", [snapshot_date]
+            )
+            cur.executemany(
+                """INSERT INTO beatport_chart_entries
+                   (snapshot_date, chart_genre, rank, track_id, track_title,
+                    mix_name, artist_raw, artist_norm)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                [
+                    (snapshot_date, e.chart_genre, e.rank, e.track_id, e.track_title,
+                     e.mix_name, e.artist_raw, e.artist_norm)
+                    for e in entries
+                ],
+            )
+        conn.commit()
+    return len(entries)
+
