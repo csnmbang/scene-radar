@@ -42,7 +42,7 @@ jobs:
         run: |
           git config user.name "scene-radar-bot"
           git config user.email "actions@github.com"
-          git add data/scene_radar.duckdb manual_events.json
+          git add data/scene_radar.duckdb manual_events.json calls.json
           git diff --cached --quiet || git commit -m "Daily snapshot $(date -u +%F)"
           # Discard anything still dirty that wasn't part of that commit on
           # purpose (a stray tracked file the run touched but this step never

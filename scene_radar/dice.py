@@ -36,7 +36,11 @@ _MONTHS = {m: i + 1 for i, m in enumerate(
     ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 )}
 _DATE_RE = re.compile(r"\b(?:mon|tue|wed|thu|fri|sat|sun),\s+([a-z]{3})\s+(\d{1,2})", re.I)
-_EVENT_HREF_RE = re.compile(r"/event/([a-z0-9]+)-")
+# Dice event URLs come in two shapes we've observed: an old slugged form
+# (/event/avrqn2-oliver-koletzki-...) and, since ~Aug 21 2026, a bare hex id
+# with no trailing hyphen (/event/6a4020a738236e00018e018a). Capture the
+# whole path segment so either shape yields a stable per-event id.
+_EVENT_HREF_RE = re.compile(r"/event/([a-z0-9-]+)")
 
 # Titles that are branding, not artists.
 _NON_ARTISTS = {"tba", "more tba", "nye", "friends", "guests", "special guest", "and more"}
@@ -115,6 +119,7 @@ def parse_listing_page(
         )
     events: list[RAEvent] = []
     seen: set[str] = set()
+    ids_extracted = 0  # tracks whether the href regex is matching *anything*
     horizon = (today or date.today()) + timedelta(days=RA_LOOKAHEAD_DAYS)
     for block in blocks:
         a = block.css_first('a[href*="/event/"]')
@@ -123,6 +128,7 @@ def parse_listing_page(
         m = _EVENT_HREF_RE.search(a.attributes.get("href", ""))
         if not m:
             continue
+        ids_extracted += 1
         eid = f"dice:{m.group(1)}"
         if eid in seen:
             continue
@@ -160,6 +166,16 @@ def parse_listing_page(
                 artists=[] if title.lower() == "tba" else artists_from_title(title),
                 source="dice",
             )
+        )
+    if blocks and ids_extracted == 0:
+        # Every card had a link but the id regex matched none of them — a
+        # structural break (Dice changed the /event/ URL shape), not a page
+        # that legitimately has zero upcoming shows. This is exactly the bug
+        # that made ids_extracted possible: previously a per-card `continue`
+        # on regex miss let 0 real events pass silently instead of raising.
+        raise DiceParseError(
+            f"{label}: {len(blocks)} event cards found but none had a "
+            f"parseable /event/ link — href format likely changed"
         )
     return events
 

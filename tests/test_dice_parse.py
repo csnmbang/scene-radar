@@ -16,6 +16,7 @@ from scene_radar.dice import (
 
 FIXTURE = Path(__file__).parent / "fixtures" / "dice_sable.html"
 PROMOTER_FIXTURE = Path(__file__).parent / "fixtures" / "dice_promoter_apex.html"
+NEW_HREF_FIXTURE = Path(__file__).parent / "fixtures" / "dice_venue_new_href_format.html"
 TODAY = date(2026, 7, 27)  # fixture captured this day
 
 
@@ -34,6 +35,31 @@ def test_parse_venue_page():
 def test_fails_loudly_on_garbage():
     with pytest.raises(DiceParseError):
         parse_venue_page("<html><body>redesigned!</body></html>", "Sable Miami")
+
+
+def test_bare_hex_event_ids_parse():
+    """Regression: around 2026-08-21 Dice dropped the slugged event URL
+    (/event/xyz-artist-name-venue) for a bare hex id with no trailing hyphen
+    (/event/6a4020a738236e00018e018a). The old href regex required a
+    trailing '-' and silently matched nothing on every card — 'blocks found'
+    stayed non-empty so the loud-failure guard never tripped, and every
+    Dice source quietly reported 0 events for four days straight."""
+    events = parse_venue_page(NEW_HREF_FIXTURE.read_text(), "Club Space Miami", today=date(2026, 8, 24))
+    assert events, "bare hex ids must still yield events"
+    assert all(e.event_id.startswith("dice:") and len(e.event_id) > len("dice:") for e in events)
+
+
+def test_raises_when_every_card_fails_id_extraction():
+    """The other half of the same regression: if the href shape breaks again,
+    fail loudly instead of quietly returning an empty list that write_snapshot
+    then chokes on."""
+    html = """
+    <div class="EventParts__EventBlock-x">
+      <a href="/totally/different/path/123">Some Show</a>
+      Fri, Aug 28|Club Space Miami|Miami|From $30
+    </div>"""
+    with pytest.raises(DiceParseError):
+        parse_venue_page(html, "Club Space Miami", today=date(2026, 8, 24))
 
 
 def test_empty_cached_page_self_heals_on_refetch(tmp_path, monkeypatch):
