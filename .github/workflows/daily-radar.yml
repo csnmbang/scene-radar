@@ -4,10 +4,16 @@ on:
   schedule:
     # 11:37 UTC = 7:37 AM Miami (EDT). Deliberately early and on an odd
     # minute: GitHub runs cron on a best-effort queue and the :00/:05 slots
-    # are heavily contended, so runs land late. Observed delay on the old
-    # "5 13 * * *" was 1.5-2.3h every day, pushing the refresh past 10am
-    # local. Starting ~90min early lands it in the morning even when queued.
+    # are heavily contended, so runs land late.
+    #
+    # Observed start times over the last two weeks of Oct/Nov were 16:15-20:51
+    # UTC, i.e. 4-9 hours after this slot — GitHub drops or defers scheduled
+    # runs under load, and a dropped one never fires at all. The two later
+    # slots are backups: whichever fires first does the work, and the `check`
+    # job below turns the others into no-ops once today's snapshot exists.
     - cron: "37 11 * * *"
+    - cron: "23 14 * * *"
+    - cron: "53 16 * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +26,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Skip a scheduled run if today's snapshot is already committed, so the
+  # backup crons don't each add another ~8MB DuckDB blob to the repo history.
+  # Manual dispatches always run — that's the override.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.today.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 15
+      - id: today
+        run: |
+          today=$(date -u +%F)
+          if [ "${{ github.event_name }}" = "schedule" ] \
+             && git log --format=%s -15 | grep -qx "Daily snapshot $today"; then
+            echo "Snapshot for $today already committed — backup run is a no-op."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   collect-and-deploy:
+    needs: check
+    if: needs.check.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,4 +92,13 @@ jobs:
         with:
           path: site
 
-      - uses: actions/deploy-pages@v4
+      # The snapshot is already committed by this point, so a Pages hiccup
+      # costs freshness, not data. deploy-pages has timed out on GitHub's side
+      # before (Aug 6, Nov 6); one retry clears most of those.
+      - id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Retry Pages deploy
+        if: steps.deploy.outcome == 'failure'
+        uses: actions/deploy-pages@v4

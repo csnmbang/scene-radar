@@ -50,20 +50,51 @@ def chart_url(slug: str, genre_id: int) -> str:
     return f"https://www.beatport.com/genre/{slug}/{genre_id}/top-100"
 
 
+# Beatport sits behind Cloudflare, which intermittently 403s GitHub's runner
+# IPs even with a valid browser fingerprint. Four of the last five failed
+# daily runs (Oct 13, 14, 17, Nov 7) were exactly this, and each one cost a
+# whole day of snapshot because the only retry was tomorrow's cron. The block
+# is per-request and short-lived, so retrying with a different fingerprint
+# after a pause usually gets through.
+_RETRYABLE_STATUS = {403, 429, 500, 502, 503, 504}
+_IMPERSONATE_ROTATION = ["chrome", "chrome136", "safari184", "firefox144", "chrome131"]
+_RETRY_BACKOFF_S = [4, 12, 30, 60]
+
+
 def fetch_chart_html(slug: str, genre_id: int, cache_dir: Path, force: bool = False) -> str:
-    """Fetch one chart page, caching raw HTML so same-day re-runs are free."""
+    """Fetch one chart page, caching raw HTML so same-day re-runs are free.
+
+    Retries transient blocks (403/429/5xx, connection errors) with backoff
+    and a rotated browser fingerprint. Anything still failing after the last
+    attempt raises — we never write a partial chart.
+    """
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"beatport_{slug}.html"
     if cache_file.exists() and not force:
         return cache_file.read_text()
-    resp = cffi_requests.get(chart_url(slug, genre_id), impersonate="chrome", timeout=30)
-    if resp.status_code != 200:
-        raise BeatportParseError(
-            f"Beatport returned HTTP {resp.status_code} for {slug} — not caching, not writing."
-        )
-    cache_file.write_text(resp.text)
-    time.sleep(REQUEST_DELAY_S)
-    return resp.text
+
+    last = "no attempt made"
+    for attempt, profile in enumerate(_IMPERSONATE_ROTATION):
+        try:
+            resp = cffi_requests.get(chart_url(slug, genre_id), impersonate=profile, timeout=30)
+        except Exception as e:  # connection reset, timeout, TLS failure
+            last = f"{type(e).__name__}: {e}"
+        else:
+            if resp.status_code == 200:
+                if attempt:
+                    print(f"  {slug}: recovered on attempt {attempt + 1} ({profile})")
+                cache_file.write_text(resp.text)
+                time.sleep(REQUEST_DELAY_S)
+                return resp.text
+            last = f"HTTP {resp.status_code}"
+            if resp.status_code not in _RETRYABLE_STATUS:
+                break  # a 404 etc. won't fix itself — fail now
+        if attempt < len(_RETRY_BACKOFF_S):
+            time.sleep(_RETRY_BACKOFF_S[attempt])
+
+    raise BeatportParseError(
+        f"Beatport returned {last} for {slug} after {attempt + 1} attempts — not caching, not writing."
+    )
 
 
 def parse_chart(html: str, chart_genre: str) -> list[ChartEntry]:
