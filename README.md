@@ -1,4 +1,4 @@
-# 📡 Scene Radar — Miami
+# Scene Radar, Miami
 
 **Live: [radar.xtremedigits.com](https://radar.xtremedigits.com)** · rebuilt daily by
 [GitHub Actions](.github/workflows/daily-radar.yml)
@@ -10,12 +10,34 @@ adds from venue Instagram announcements).
 **Gap = artists blowing up with no local dates.** The Timeline tab keeps
 receipts: when the radar flagged an artist vs. when a Miami booking appeared.
 
+![Scene Radar dashboard: upcoming Miami events ranked by who is charting on Beatport right now](assets/dashboard.png)
+
 ```
 Beatport Top 100 (7 charts) ─┐
 RA Miami (GraphQL)           ├─ DuckDB snapshots ─ demand scores ─ fuzzy join ─ gaps
 Dice venue pages             │        │
 manual_events.json/Supabase ─┘        └─ static dashboard → GitHub Pages (daily cron)
 ```
+
+## Results so far
+
+As of **Nov 9, 2026**, after **106 days** of daily snapshots (numbers come
+from the live dashboard's Timeline tab and update every run):
+
+| | |
+|---|---|
+| Artists tracked | **996** across 7 Beatport genre charts |
+| Bookings flagged early | **45**. The radar flagged them before any Miami date existed |
+| Median lead time | **58 days** between being flagged and a Miami booking appearing |
+| 30-day conversion | **14.3%** of "hot gap" artists (demand ≥ 40, no Miami bookings) got booked within 30 days |
+| Leads thrown out | **57**. They looked like early calls but were data artifacts, explained below |
+
+The 45 is after discarding anything that only *looks* like foresight: a
+venue newly added to the dataset (its whole calendar arrives at once), the
+first day of tracking, and any lead under 7 days, which mostly measures how
+fast an existing announcement gets picked up. An earlier version counted
+every positive lead and overstated the result, so the filter is strict on
+purpose.
 
 ## Setup (5 steps)
 
@@ -68,7 +90,7 @@ days), **Track record** (calls logged before their outcomes).
 Two independent kinds of evidence, deliberately kept separate:
 
 **Timeline** is mechanical and unbiased — every tracked artist, no
-cherry-picking. It answers "across all 743 artists on the radar, how many
+cherry-picking. It answers "across every artist on the radar (~1,000), how many
 got booked, and how far ahead did we see it?" No survivorship bias, because
 nothing is hand-selected.
 
@@ -114,9 +136,10 @@ real booking gets credited to the wrong artist. Matches are stored in
 
 ## Implementation notes / deviations from spec
 
-- **`curl-cffi` instead of `httpx`**: Beatport (Cloudflare) and RA (DataDome)
-  both 403 plain httpx regardless of headers; curl-cffi's Chrome TLS
-  impersonation gets normal 200s. Still 1 req/s, cached to disk, weekly volume.
+- **`curl-cffi` instead of `httpx`**: both sites reject requests that don't look
+  like a normal browser, so the collectors use curl-cffi's browser-compatible
+  client. Collection is deliberately light: public pages only, 1 request per
+  second, raw responses cached to disk, and one pass a day.
 - **Beatport needs no HTML parsing**: charts ship as embedded `__NEXT_DATA__`
   JSON. Parser validates hard and raises rather than writing partial data.
 - **RA via GraphQL is the primary tested path** (`ra.co/graphql`, Miami area
