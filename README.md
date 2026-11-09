@@ -1,4 +1,4 @@
-# 📡 Scene Radar — Miami
+# Scene Radar, Miami
 
 **Live: [radar.xtremedigits.com](https://radar.xtremedigits.com)** · rebuilt daily by
 [GitHub Actions](.github/workflows/daily-radar.yml)
