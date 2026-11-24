@@ -6,6 +6,7 @@ Then:  uv run streamlit run app.py
 
 import sys
 import traceback
+from datetime import date
 
 from dotenv import load_dotenv
 
@@ -20,7 +21,7 @@ def main() -> int:
 
     print("[1/7] Beatport charts")
     try:
-        bp_entries = beatport.collect(force=force)
+        bp_entries, bp_chart_date, bp_mode = beatport.collect_with_provenance(force=force)
     except Exception:
         traceback.print_exc()
         print("Beatport collection FAILED — nothing written.")
@@ -56,7 +57,10 @@ def main() -> int:
     con = connect()
     try:
         n_bp = beatport.write_snapshot(con, bp_entries)
-        n_bp_saber = beatport.push_neon_chart_entries(bp_entries)
+        beatport.record_provenance(con, date.today(), bp_chart_date, bp_mode)
+        # Saber scores sets against "what's charting right now", so it gets the
+        # real chart date — never a stale chart labelled as today's.
+        n_bp_saber = beatport.push_neon_chart_entries(bp_entries, bp_chart_date)
         n_ra = ra.write_snapshot(con, ra_events)
         n_dice = dice.write_snapshot(con, dice_events)
         n_manual = manual.write_snapshot(con, manual_events)

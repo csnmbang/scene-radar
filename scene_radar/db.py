@@ -88,6 +88,15 @@ CREATE TABLE IF NOT EXISTS market_bookings (
     venue_name VARCHAR
 );
 
+-- Which chart date each snapshot's Beatport data actually came from. Equal to
+-- the snapshot date when fetched live; older when the cloud run was blocked by
+-- Beatport and used the committed feed (see beatport_feed.py).
+CREATE TABLE IF NOT EXISTS beatport_provenance (
+    snapshot_date DATE NOT NULL,
+    chart_date DATE NOT NULL,
+    mode VARCHAR NOT NULL              -- 'live' or 'feed'
+);
+
 -- columns added after first release (no-ops when already present)
 ALTER TABLE gaps ADD COLUMN IF NOT EXISTS last_played DATE;
 """

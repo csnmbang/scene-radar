@@ -396,6 +396,14 @@ def build_payload() -> dict:
             })
         lineup.sort(key=lambda e: (-e["heat"], e["date"]))
 
+        # Beatport blocks GitHub's servers, so the cloud run sometimes builds from
+        # the committed chart feed. Say so whenever the charts predate the data.
+        prov = con.execute(
+            "SELECT chart_date FROM beatport_provenance WHERE snapshot_date = ? AND mode = 'feed'",
+            [snap],
+        ).fetchone()
+        chart_as_of = prov[0].isoformat() if prov and prov[0] < snap else None
+
         n_events_ra = sum(1 for e in events if e["source"] != "dice")
         n_events_dice = sum(1 for e in events if e["source"] == "dice")
         n_matched = con.execute(
@@ -415,6 +423,7 @@ def build_payload() -> dict:
         return {
             "snapshot": snap.isoformat(),
             "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "chartAsOf": chart_as_of,
             "stats": {
                 "artists": len(gaps),
                 "events": len(events),

@@ -7,13 +7,14 @@ transient Cloudflare 403 and lost a whole day of snapshots each time.
 import pytest
 
 from scene_radar import beatport
-from scene_radar.beatport import BeatportParseError, fetch_chart_html
+from scene_radar.beatport import BeatportBlocked, BeatportParseError, fetch_chart_html
 
 
 class FakeResp:
-    def __init__(self, status: int, text: str = "<html>ok</html>"):
+    def __init__(self, status: int, text: str = "<html>ok</html>", headers: dict | None = None):
         self.status_code = status
         self.text = text
+        self.headers = headers or {}
 
 
 @pytest.fixture(autouse=True)
@@ -71,3 +72,31 @@ def test_cached_page_is_never_refetched(tmp_path, monkeypatch):
     seen = _script(monkeypatch, [])
     assert fetch_chart_html("house", 5, tmp_path) == "<html>cached</html>"
     assert seen == []
+
+
+CHALLENGE = {"cf-mitigated": "challenge"}
+
+
+def test_cloudflare_challenge_fails_fast_without_retrying(tmp_path, monkeypatch):
+    """Regression: from Nov 20 2026 every GitHub runner request got Cloudflare's
+    'Just a moment...' challenge on all five fingerprints. Retrying it only
+    burned ~2 minutes per run — the address is blocked, not flaky."""
+    seen = _script(monkeypatch, [FakeResp(403, headers=CHALLENGE)] * 5)
+    with pytest.raises(BeatportBlocked, match="Cloudflare challenge"):
+        fetch_chart_html("tech-house", 11, tmp_path)
+    assert len(seen) == 1
+
+
+def test_a_403_that_survives_every_retry_counts_as_blocked(tmp_path, monkeypatch):
+    _script(monkeypatch, [FakeResp(403)] * len(beatport._IMPERSONATE_ROTATION))
+    with pytest.raises(BeatportBlocked):
+        fetch_chart_html("house", 5, tmp_path)
+
+
+def test_a_500_that_survives_every_retry_is_not_a_block(tmp_path, monkeypatch):
+    """Only an address-level block may fall back to the feed; a flaky server
+    must not quietly substitute stale data."""
+    _script(monkeypatch, [FakeResp(500)] * len(beatport._IMPERSONATE_ROTATION))
+    with pytest.raises(BeatportParseError) as exc:
+        fetch_chart_html("house", 5, tmp_path)
+    assert not isinstance(exc.value, BeatportBlocked)

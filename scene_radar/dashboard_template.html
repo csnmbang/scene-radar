@@ -236,7 +236,8 @@ const TABS = ["Lineup", "Gaps", "Genres", "Venues", "Supply", "Timeline", "Track
 const nav = document.getElementById("nav");
 const main = document.getElementById("main");
 document.getElementById("snapshot").textContent =
-  `snapshot ${DATA.snapshot} · built ${DATA.generated}`;
+  `snapshot ${DATA.snapshot} · built ${DATA.generated}` +
+  (DATA.chartAsOf ? ` · Beatport charts as of ${DATA.chartAsOf}` : "");
 document.getElementById("footer").innerHTML =
   `Demand: Beatport Top 100 (7 genres) · Supply: Resident Advisor Miami + Dice + manual adds · next 90 days<br>
    Club Space, Sable and M2 ticket on Dice and never post upcoming events on RA, so their genre mix is inferred from lineups rather than tags.`;
@@ -294,7 +295,7 @@ const lineupSection = el(`<section>
   </div>
   <div class="card">
     <h2>What's on, ranked by who's charting right now</h2>
-    <div class="sub">Every upcoming Miami event we can see — Resident Advisor, Dice venues, Dice promoters and announcements that only ran on Instagram — joined to today's Beatport positions. Ranked by the hottest artist on each bill. No genre inference and no booking history: every row is a listing we scraped and a chart rank from this morning.</div>
+    <div class="sub">Every upcoming Miami event we can see — Resident Advisor, Dice venues, Dice promoters and announcements that only ran on Instagram — joined to ${DATA.chartAsOf ? `Beatport positions as of ${DATA.chartAsOf}` : "today's Beatport positions"}. Ranked by the hottest artist on each bill. No genre inference and no booking history: every row is a listing we scraped and a Beatport chart rank${DATA.chartAsOf ? " (the charts are a few days old today)" : " from this morning"}.</div>
     <div class="controls">
       <input type="search" id="lu-search" placeholder="Search artist, event, venue…">
       <select id="lu-window">

@@ -33,6 +33,14 @@ class BeatportParseError(Exception):
     """Raised when a chart page doesn't contain what we expect. Fail loudly."""
 
 
+class BeatportBlocked(BeatportParseError):
+    """Beatport refused this network address (Cloudflare challenge / persistent
+    403). Distinct from a parse error because it says nothing about the
+    page's structure — the only error that may fall back to the committed
+    feed. A structural change must still fail loudly, never be masked by
+    stale data."""
+
+
 @dataclass
 class ChartEntry:
     chart_genre: str
@@ -74,6 +82,7 @@ def fetch_chart_html(slug: str, genre_id: int, cache_dir: Path, force: bool = Fa
         return cache_file.read_text()
 
     last = "no attempt made"
+    last_status = None
     for attempt, profile in enumerate(_IMPERSONATE_ROTATION):
         try:
             resp = cffi_requests.get(chart_url(slug, genre_id), impersonate=profile, timeout=30)
@@ -87,14 +96,27 @@ def fetch_chart_html(slug: str, genre_id: int, cache_dir: Path, force: bool = Fa
                 time.sleep(REQUEST_DELAY_S)
                 return resp.text
             last = f"HTTP {resp.status_code}"
+            last_status = resp.status_code
+            if resp.status_code == 403 and resp.headers.get("cf-mitigated") == "challenge":
+                # Cloudflare's managed challenge ("Just a moment..."), served
+                # to this IP address regardless of browser fingerprint. On
+                # Nov 24 2026 a diagnostic run showed all five fingerprints
+                # get it from a GitHub runner (Azure, AS8075) while the same
+                # request from a home connection returns the chart. Retrying
+                # can't change the address, so don't burn two minutes on it.
+                raise BeatportBlocked(
+                    f"Beatport served a Cloudflare challenge for {slug} "
+                    f"(this network address is blocked, not a transient error)."
+                )
             if resp.status_code not in _RETRYABLE_STATUS:
                 break  # a 404 etc. won't fix itself — fail now
         if attempt < len(_RETRY_BACKOFF_S):
             time.sleep(_RETRY_BACKOFF_S[attempt])
 
-    raise BeatportParseError(
-        f"Beatport returned {last} for {slug} after {attempt + 1} attempts — not caching, not writing."
-    )
+    msg = f"Beatport returned {last} for {slug} after {attempt + 1} attempts — not caching, not writing."
+    # A 403 that survives every retry is the same address-level block, just
+    # without the challenge header.
+    raise (BeatportBlocked if last_status == 403 else BeatportParseError)(msg)
 
 
 def parse_chart(html: str, chart_genre: str) -> list[ChartEntry]:
@@ -162,6 +184,47 @@ def collect(snapshot_date: date | None = None, force: bool = False) -> list[Char
         print(f"  {slug}: {len(entries)} artist-track rows")
         all_entries.extend(entries)
     return all_entries
+
+
+def collect_with_provenance(
+    snapshot_date: date | None = None, force: bool = False, feed_path: Path | None = None
+) -> tuple[list[ChartEntry], date, str]:
+    """Collect the charts, falling back to the committed feed when blocked.
+
+    Returns (entries, chart_date, mode) where mode is "live" or "feed".
+
+    Beatport's Cloudflare challenges GitHub's datacenter addresses (see
+    BeatportBlocked), so the daily cloud run usually can't fetch charts
+    itself. A job on a home connection refreshes data/beatport_feed.json;
+    this reads it when the live fetch is blocked. Only a *block* falls back:
+    a parse error means Beatport changed its page and must stay loud.
+    All-or-nothing — the feed is used for every genre, never mixed with live
+    pages, so the nine charts always share one date.
+    """
+    from . import beatport_feed
+
+    snapshot_date = snapshot_date or date.today()
+    try:
+        return collect(snapshot_date, force=force), snapshot_date, "live"
+    except BeatportBlocked as e:
+        print(f"  live fetch blocked: {e}")
+        feed = beatport_feed.load_feed(today=snapshot_date, path=feed_path or beatport_feed.FEED_PATH)
+        age = (snapshot_date - feed.chart_date).days
+        print(
+            f"  using committed Beatport feed: charts as of {feed.chart_date} "
+            f"({'today' if age == 0 else f'{age} day(s) old'}, {len(feed.entries)} rows)"
+        )
+        return feed.entries, feed.chart_date, "feed"
+
+
+def record_provenance(con, snapshot_date: date, chart_date: date, mode: str) -> None:
+    """Remember which chart date a snapshot was built from, so the dashboard
+    can say so when the charts are older than the rest of the data."""
+    con.execute("DELETE FROM beatport_provenance WHERE snapshot_date = ?", [snapshot_date])
+    con.execute(
+        "INSERT INTO beatport_provenance (snapshot_date, chart_date, mode) VALUES (?, ?, ?)",
+        [snapshot_date, chart_date, mode],
+    )
 
 
 def write_snapshot(con, entries: list[ChartEntry], snapshot_date: date | None = None) -> int:

@@ -51,7 +51,8 @@ purpose.
 
 Re-running `run_all.py` on the same day reuses the on-disk cache and replaces
 that day's snapshot (never duplicates). The GitHub Actions workflow runs the
-whole pipeline daily at 9:05 AM Miami time, commits the DuckDB snapshot, and
+whole pipeline daily (7:37 AM Miami, with two later backup slots because GitHub
+often starts scheduled runs hours late), commits the DuckDB snapshot, and
 deploys the dashboard to Pages; momentum scoring diffs against the previous
 snapshot.
 
@@ -142,6 +143,17 @@ real booking gets credited to the wrong artist. Matches are stored in
   second, raw responses cached to disk, and one pass a day.
 - **Beatport needs no HTML parsing**: charts ship as embedded `__NEXT_DATA__`
   JSON. Parser validates hard and raises rather than writing partial data.
+- **Beatport blocks GitHub's servers, so charts are fetched from a laptop.**
+  Since Nov 20 2026 Beatport's Cloudflare serves a "Just a moment..." challenge
+  to every request from a GitHub runner (Azure datacenter addresses), whatever
+  the browser fingerprint; the same request from a home connection returns the
+  chart. Retrying can't help, so the cloud run reads `data/beatport_feed.json`
+  instead, and `scripts/refresh_beatport_feed.sh` keeps that file fresh from a
+  home connection (own clone, commits only that file). Only a *block* triggers
+  the fallback — a changed page layout still fails loudly — the feed is refused
+  past 7 days, and the dashboard header says "Beatport charts as of <date>"
+  whenever the charts are older than the rest of the data. Beatport's official
+  API would remove the need for any of this; it needs access granted by them.
 - **RA via GraphQL is the primary tested path** (`ra.co/graphql`, Miami area
   id 38). The Apify actor path exists (`APIFY_TOKEN` + optional
   `RA_APIFY_ACTOR` in `.env`) and falls back to GraphQL on any failure.
